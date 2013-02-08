@@ -107,7 +107,7 @@ class TestCreateIso(cloudstackTestCase):
                     description=self.services["ostype"]
                     )
         if not isinstance(ostypes, list):
-            raise unittest.SkipTest("OSTypeId for given description not found")
+            raise unittest.SkipTest("OSTypeId for given description noy found")
 
         self.services["iso_1"]["ostypeid"] = ostypes[0].id
         self.services["iso_2"]["ostypeid"] = ostypes[0].id
@@ -118,6 +118,7 @@ class TestCreateIso(cloudstackTestCase):
 
     def tearDown(self):
         try:
+
             #Clean up, terminate the created ISOs
             cleanup_resources(self.apiclient, self.cleanup)
 
@@ -222,7 +223,7 @@ class TestISO(cloudstackTestCase):
                     description=cls.services["ostype"]
                     )
         if not isinstance(ostypes, list):
-            raise unittest.SkipTest("OSTypeId for given description not found")
+            raise unittest.SkipTest("OSTypeId for given description noy found")
 
         cls.services["iso_1"]["ostypeid"] = ostypes[0].id
         cls.services["iso_2"]["ostypeid"] = ostypes[0].id

@@ -64,7 +64,7 @@ class Services:
                                     "displaytext": "Tiny Instance",
                                     "cpunumber": 1,
                                     "cpuspeed": 100,    # in MHz
-                                    "memory": 64,       # In MBs
+                                    "memory": 128,       # In MBs
                         },
                         "disk_offering": {
                                     "displaytext": "Tiny Disk Offering",
@@ -87,7 +87,7 @@ class Services:
                         "template": {
                                     "displaytext": "Cent OS Template",
                                     "name": "Cent OS Template",
-                                    "ostypeid": '01853327-513e-4508-9628-f1f55db1946f',
+                                    "ostype": 'CentOS 5.3 (64-bit)',
                                     "templatefilter": 'self',
                                     "ispublic": False,
                         },
@@ -130,7 +130,7 @@ class Services:
                                     "endport": 22,
                                     "cidrlist": '0.0.0.0/0',
                         },
-                        "ostypeid": '01853327-513e-4508-9628-f1f55db1946f',
+                        "ostype": 'CentOS 5.3 (64-bit)',
                         # Cent OS 5.3 (64 bit)
                         "sleep": 60,
                         "timeout": 10,
@@ -152,7 +152,7 @@ class TestOfferings(cloudstackTestCase):
         cls.template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
         cls.services["server"]["zoneid"] = cls.zone.id
 
@@ -253,7 +253,6 @@ class TestOfferings(cloudstackTestCase):
     def test_02_project_disk_offerings(self):
         """ Test project disk offerings
         """
-
         # Validate the following
         # 1. Create a project.
         # 2. List service offerings for the project. All disk offerings
@@ -332,7 +331,7 @@ class TestNetwork(cloudstackTestCase):
         cls.template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
         cls.services["server"]["zoneid"] = cls.zone.id
 
@@ -520,9 +519,10 @@ class TestTemplates(cloudstackTestCase):
         cls.template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
         cls.services["server"]["zoneid"] = cls.zone.id
+        cls.services["template"]["ostypeid"] = cls.template.ostypeid
 
         # Create Domains, Account etc
         cls.domain = Domain.create(
@@ -590,6 +590,7 @@ class TestTemplates(cloudstackTestCase):
     def test_04_public_template_use_in_project(self):
         """Test Templates creation in projects
         """
+        # Validate the following
         # 1. Create a project
         # 2. Verify Public templates can be used without any restriction
         # 3. Verify that template created in project can be used in project
@@ -648,6 +649,7 @@ class TestTemplates(cloudstackTestCase):
     def test_05_use_private_template_in_project(self):
         """Test use of private template in a project
         """
+        # Validate the following
         # 1. Create a project
         # 2. Verify that in order to use somebody’s Private template for vm
         #    creation in the project, permission to use the template has to
@@ -749,7 +751,7 @@ class TestSnapshots(cloudstackTestCase):
         cls.template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
         cls.services["server"]["zoneid"] = cls.zone.id
 
@@ -895,7 +897,7 @@ class TestPublicIpAddress(cloudstackTestCase):
         cls.template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
         cls.services["server"]["zoneid"] = cls.zone.id
 
@@ -1194,7 +1196,7 @@ class TestSecurityGroup(cloudstackTestCase):
         template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
         cls.services["domainid"] = cls.domain.id
         cls.services["server"]["zoneid"] = cls.zone.id

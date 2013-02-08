@@ -41,12 +41,6 @@ class Services:
                                     "name": "Project",
                                     "displaytext": "Test project",
                         },
-                         "mgmt_server": {
-                                   "ipaddress": '192.168.100.21',
-                                   "username": 'root',
-                                   "password": 'password',
-                                   "port": 22,
-                        },
                         "account": {
                                     "email": "administrator@clogeny.com",
                                     "firstname": "Test",
@@ -78,7 +72,7 @@ class Services:
                                     "displaytext": "Tiny Instance",
                                     "cpunumber": 1,
                                     "cpuspeed": 100,    # in MHz
-                                    "memory": 64,       # In MBs
+                                    "memory": 128,       # In MBs
                         },
                         "virtual_machine": {
                                     "displayname": "Test VM",
@@ -92,7 +86,7 @@ class Services:
                                     "publicport": 22,
                                     "protocol": 'TCP',
                          },
-                        "ostypeid": '01853327-513e-4508-9628-f1f55db1946f',
+                        "ostype": 'CentOS 5.3 (64-bit)',
                         # Cent OS 5.3 (64 bit)
                         "sleep": 60,
                         "timeout": 10,
@@ -1451,7 +1445,7 @@ class TestProjectSuspendActivate(cloudstackTestCase):
         cls.template = get_template(
                                     cls.api_client,
                                     cls.zone.id,
-                                    cls.services["ostypeid"]
+                                    cls.services["ostype"]
                                     )
         configs = Configurations.list(
                                       cls.api_client,
@@ -1498,7 +1492,8 @@ class TestProjectSuspendActivate(cloudstackTestCase):
                         cls.project,
                         cls.account,
                         cls.disk_offering,
-                        cls.service_offering
+                        cls.service_offering,
+                        cls.user
                         ]
         return
 

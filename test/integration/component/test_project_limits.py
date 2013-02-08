@@ -63,7 +63,7 @@ class Services:
                                     "displaytext": "Tiny Instance",
                                     "cpunumber": 1,
                                     "cpuspeed": 100, # in MHz
-                                    "memory": 64, # In MBs
+                                    "memory": 128, # In MBs
                         },
                         "disk_offering": {
                                     "displaytext": "Tiny Disk Offering",
@@ -86,7 +86,7 @@ class Services:
                         "template": {
                                     "displaytext": "Cent OS Template",
                                     "name": "Cent OS Template",
-                                    "ostypeid": '01853327-513e-4508-9628-f1f55db1946f',
+                                    "ostype": 'CentOS 5.3 (64-bit)',
                                     "templatefilter": 'self',
                         },
                         "network_offering": {
@@ -112,7 +112,7 @@ class Services:
                                   "name": "Test Network",
                                   "displaytext": "Test Network",
                                 },
-                        "ostypeid": 'bc66ada0-99e7-483b-befc-8fb0c2129b70',
+                        "ostype": 'CentOS 5.3 (64-bit)',
                         # Cent OS 5.3 (64 bit)
                         "sleep": 60,
                         "timeout": 10,
@@ -485,9 +485,10 @@ class TestResourceLimitsProject(cloudstackTestCase):
         cls.template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
         cls.services["server"]["zoneid"] = cls.zone.id
+        cls.services["template"]["ostypeid"] = cls.template.ostypeid
 
         # Create Domains, Account etc
         cls.domain = Domain.create(
@@ -792,7 +793,7 @@ class TestResourceLimitsProject(cloudstackTestCase):
         update_resource_limit(
                               self.apiclient,
                               2, # Volume
-                              max=2,
+                              max=1,
                               projectid=self.project.id
                               )
 
@@ -827,6 +828,7 @@ class TestResourceLimitsProject(cloudstackTestCase):
     def test_07_templates_per_project(self):
         """Test Templates limit per project
         """
+        # Validate the following
         # 1. set max no of templates per project to 1.
         # 2. Create a template in this project. Both template should be in
         #    ready state
@@ -924,8 +926,10 @@ class TestMaxProjectNetworks(cloudstackTestCase):
         cls.template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
+
+        cls.services["template"]["ostypeid"] = cls.template.ostypeid
         cls.service_offering = ServiceOffering.create(
                                             cls.api_client,
                                             cls.services["service_offering"]

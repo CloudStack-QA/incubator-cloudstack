@@ -62,7 +62,7 @@ class Services:
                                     "storagetype": "local",
                                     "disksize": 1
                         },
-                        'resized_disk_offering': {
+                        "resized_disk_offering": {
                                     "displaytext": "Resized",
                                     "name": "Resized",
                                     "storagetype": "local",
@@ -300,7 +300,6 @@ class TestVolumes(cloudstackTestCase):
                                     cls.services["resized_disk_offering"],
                                     custom=True
                                     )
-
         template = get_template(
                             cls.api_client,
                             cls.zone.id,
@@ -521,7 +520,6 @@ class TestVolumes(cloudstackTestCase):
                 % (extract_vol.url, self.volume.id)
             )
 
-    @attr(tags = ["advanced", "advancedns", "smoke"])
     def test_07_resize_fail(self):
         """Verify invalid options fail to Resize a volume"""
         # Verify the size is the new size is what we wanted it to be.

@@ -432,6 +432,7 @@ class TestTemplates(cloudstackTestCase):
 
     def tearDown(self):
         try:
+
             #Clean up, terminate the created templates
             cleanup_resources(self.apiclient, self.cleanup)
 

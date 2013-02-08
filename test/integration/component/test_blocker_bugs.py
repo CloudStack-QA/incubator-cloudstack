@@ -50,8 +50,8 @@ class Services:
                                     "name": "Tiny Instance",
                                     "displaytext": "Tiny Instance",
                                     "cpunumber": 1,
-                                    "cpuspeed": 100,    # in MHz
-                                    "memory": 64,       # In MBs
+                                    "cpuspeed": 100, # in MHz
+                                    "memory": 128, # In MBs
                         },
                         "disk_offering": {
                                     "displaytext": "Small",
@@ -70,13 +70,13 @@ class Services:
                         },
                         "volume": {
                                    "diskname": "APP Data Volume",
-                                   "size": 1,   # in GBs
-                                   "diskdevice": "/dev/xvdb",   # Data Disk
+                                   "size": 1, # in GBs
+                                   "diskdevice": "/dev/xvdb", # Data Disk
                         },
                         "templates": {
                                     "displaytext": 'Template from snapshot',
                                     "name": 'Template from snapshot',
-                                    "ostypeid": '01853327-513e-4508-9628-f1f55db1946f',
+                                    "ostype": 'CentOS 5.3 (64-bit)',
                                     "templatefilter": 'self',
                                     "url": "http://download.cloud.com/releases/2.0.0/UbuntuServer-10-04-64bit.vhd.bz2",
                                     "hypervisor": 'XenServer',
@@ -98,7 +98,7 @@ class Services:
                                     "endport": 22,
                                     "protocol": "TCP"
                         },
-                        "ostypeid": '01853327-513e-4508-9628-f1f55db1946f',
+                        "ostype": 'CentOS 5.3 (64-bit)',
                         # Cent OS 5.3 (64 bit)
                         "sleep": 60,
                         "mode": 'advanced',
@@ -122,7 +122,7 @@ class TestSnapshots(cloudstackTestCase):
         cls.template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
         cls.services["virtual_machine"]["zoneid"] = cls.zone.id
         cls.services["volume"]["zoneid"] = cls.zone.id
@@ -183,7 +183,7 @@ class TestSnapshots(cloudstackTestCase):
             raise Exception("Warning: Exception during cleanup : %s" % e)
         return
 
-    @attr(tags = ["advanced", "advancedns"])
+    @attr(tags=["advanced", "advancedns"])
     def test_01_volume_from_snapshot(self):
         """TS_BUG_001-Test Creating snapshot from volume having spaces in name(KVM)
         """
@@ -454,7 +454,7 @@ class TestTemplate(cloudstackTestCase):
 
         return
 
-    @attr(tags = ["advanced", "advancedns", "basic", "sg"])
+    @attr(tags=["advanced", "advancedns", "basic", "sg"])
     def test_01_create_template(self):
         """TS_BUG_002-Test to create and deploy VM using password enabled template
         """
@@ -546,7 +546,7 @@ class TestNATRules(cloudstackTestCase):
         template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
         #Create an account, network, VM and IP addresses
         cls.account = Account.create(
@@ -599,7 +599,7 @@ class TestNATRules(cloudstackTestCase):
         cleanup_resources(self.apiclient, self.cleanup)
         return
 
-    @attr(tags = ["advanced"])
+    @attr(tags=["advanced"])
     def test_01_firewall_rules_port_fw(self):
         """"Checking firewall rules deletion after static NAT disable"""
 
@@ -629,7 +629,7 @@ class TestNATRules(cloudstackTestCase):
                         )
         self.debug("Created Static NAT rule for public IP ID: %s" %
                                                     public_ip.id)
-        list_rules_repsonse = StaticNATRule.list(
+        list_rules_repsonse = FireWallRule.list(
                                                  self.apiclient,
                                                  id=nat_rule.id
                                                 )
@@ -700,7 +700,7 @@ class TestNATRules(cloudstackTestCase):
 
         nat_rule.delete(self.apiclient)
 
-        list_rules_repsonse = StaticNATRule.list(
+        list_rules_repsonse = FireWallRule.list(
                                                     self.apiclient,
                                                     id=nat_rule.id
                                                     )
@@ -740,7 +740,7 @@ class TestRouters(cloudstackTestCase):
         cls.template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
 
         # Create an account, domain etc
@@ -800,7 +800,7 @@ class TestRouters(cloudstackTestCase):
             raise Exception("Warning: Exception during cleanup : %s" % e)
         return
 
-    @attr(tags = ["advanced", "advancedns"])
+    @attr(tags=["advanced", "advancedns"])
     def test_01_list_routers_admin(self):
         """TS_BUG_007-Check listRouters() using Admin User
         """
@@ -866,7 +866,7 @@ class TestRouterRestart(cloudstackTestCase):
         template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
         cls.services["virtual_machine"]["zoneid"] = cls.zone.id
 
@@ -910,7 +910,7 @@ class TestRouterRestart(cloudstackTestCase):
         self.apiclient = self.testClient.getApiClient()
         return
 
-    @attr(tags = ["advanced", "basic", "sg", "advancedns", "eip"])
+    @attr(tags=["advanced", "basic", "sg", "advancedns", "eip"])
     def test_01_restart_network_cleanup(self):
         """TS_BUG_008-Test restart network
         """
@@ -996,7 +996,7 @@ class TestTemplates(cloudstackTestCase):
         template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
         cls.services["virtual_machine"]["zoneid"] = cls.zone.id
         cls.account = Account.create(
@@ -1071,8 +1071,8 @@ class TestTemplates(cloudstackTestCase):
 
         return
 
-    @attr(speed = "slow")
-    @attr(tags = ["advanced", "advancedns", "basic", "sg", "eip"])
+    @attr(speed="slow")
+    @attr(tags=["advanced", "advancedns", "basic", "sg", "eip"])
     def test_01_check_template_size(self):
         """TS_BUG_009-Test the size of template created from root disk
         """
@@ -1099,8 +1099,8 @@ class TestTemplates(cloudstackTestCase):
                              )
         return
 
-    @attr(speed = "slow")
-    @attr(tags = ["advanced", "advancedns", "basic", "sg", "eip"])
+    @attr(speed="slow")
+    @attr(tags=["advanced", "advancedns", "basic", "sg", "eip"])
     def test_02_check_size_snapshotTemplate(self):
         """TS_BUG_010-Test check size of snapshot and template
         """
@@ -1180,8 +1180,8 @@ class TestTemplates(cloudstackTestCase):
                         )
         return
 
-    @attr(speed = "slow")
-    @attr(tags = ["advanced", "advancedns", "basic", "sg", "eip"])
+    @attr(speed="slow")
+    @attr(tags=["advanced", "advancedns", "basic", "sg", "eip"])
     def test_03_resuse_template_name(self):
         """TS_BUG_011-Test Reusing deleted template name
         """

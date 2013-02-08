@@ -50,8 +50,8 @@ class Services:
                                     "name": "Tiny Instance",
                                     "displaytext": "Tiny Instance",
                                     "cpunumber": 1,
-                                    "cpuspeed": 100,    # in MHz
-                                    "memory": 64,       # In MBs
+                                    "cpuspeed": 100, # in MHz
+                                    "memory": 128, # In MBs
                         },
                         "disk_offering": {
                                     "displaytext": "Small",
@@ -77,7 +77,7 @@ class Services:
                             0: {
                                 "displaytext": "Public Template",
                                 "name": "Public template",
-                                "ostypeid": '01853327-513e-4508-9628-f1f55db1946f',
+                                "ostype": 'Other Ubuntu (64-bit)',
                                 "url": "http://download.cloud.com/releases/2.0.0/UbuntuServer-10-04-64bit.vhd.bz2",
                                 "hypervisor": 'XenServer',
                                 "format": 'VHD',
@@ -89,15 +89,14 @@ class Services:
                         "template": {
                                 "displaytext": "Cent OS Template",
                                 "name": "Cent OS Template",
-                                "ostypeid": '01853327-513e-4508-9628-f1f55db1946f',
+                                "ostype": 'CentOS 5.3 (64-bit)',
                                 "templatefilter": 'self',
                         },
                         "templatefilter": 'self',
-                        "destzoneid": 2,    # For Copy template (Destination zone)
-                        "ostypeid": '01853327-513e-4508-9628-f1f55db1946f',
+                        "ostype": 'CentOS 5.3 (64-bit)',
                         "sleep": 60,
                         "timeout": 10,
-                        "mode": 'advanced',     # Networking mode: Advanced, basic
+                        "mode": 'advanced', # Networking mode: Advanced, basic
                      }
 
 
@@ -159,7 +158,7 @@ class TestCreateTemplate(cloudstackTestCase):
 
         return
 
-    @attr(tags = ["advanced", "advancedns"])
+    @attr(tags=["advanced", "advancedns"])
     def test_01_create_template(self):
         """Test create public & private template
         """
@@ -294,7 +293,7 @@ class TestTemplates(cloudstackTestCase):
         template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
         cls.services["virtual_machine"]["zoneid"] = cls.zone.id
         cls.account = Account.create(
@@ -382,7 +381,7 @@ class TestTemplates(cloudstackTestCase):
 
         return
 
-    @attr(tags = ["advanced", "advancedns"])
+    @attr(tags=["advanced", "advancedns"])
     def test_01_create_template_volume(self):
         """Test Create template from volume
         """
@@ -422,7 +421,7 @@ class TestTemplates(cloudstackTestCase):
                         )
         return
 
-    @attr(tags = ["advanced", "advancedns", "multizone"])
+    @attr(tags=["advanced", "advancedns", "multizone"])
     def test_02_copy_template(self):
         """Test for copy template from one zone to another"""
 
@@ -481,7 +480,7 @@ class TestTemplates(cloudstackTestCase):
                                         self.apiclient,
                                         templatefilter=\
                                         self.services["templatefilter"],
-                                        id=self.template_2.id,
+                                        id=self.template.id,
                                         zoneid=self.services["destzoneid"]
                                         )
             self.assertEqual(
@@ -494,9 +493,9 @@ class TestTemplates(cloudstackTestCase):
                                 0,
                                 "Check template extracted in List Templates"
                             )
-    
+
             template_response = list_template_response[0]
-            if template_response.isready == True:
+            if template_response.isready == 'true':
                 break
 
             if timeout == 0:
@@ -510,7 +509,7 @@ class TestTemplates(cloudstackTestCase):
         self.apiclient.deleteTemplate(cmd)
         return
 
-    @attr(tags = ["advanced", "advancedns"])
+    @attr(tags=["advanced", "advancedns"])
     def test_03_delete_template(self):
         """Test Delete template
         """
@@ -565,8 +564,8 @@ class TestTemplates(cloudstackTestCase):
                         )
         return
 
-    @attr(speed = "slow")
-    @attr(tags = ["advanced", "advancedns"])
+    @attr(speed="slow")
+    @attr(tags=["advanced", "advancedns"])
     def test_04_template_from_snapshot(self):
         """Create Template from snapshot
         """

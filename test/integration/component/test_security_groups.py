@@ -90,7 +90,7 @@ class Services:
                     "endport": -1,
                     "cidrlist": '0.0.0.0/0',
                 },
-            "ostypeid": '01853327-513e-4508-9628-f1f55db1946f',
+            "ostype": 'CentOS 5.3 (64-bit)',
             # CentOS 5.3 (64-bit)
             "sleep": 60,
             "timeout": 10,
@@ -120,7 +120,10 @@ class TestDefaultSecurityGroup(cloudstackTestCase):
     @classmethod
     def setUpClass(cls):
         cls.services = Services().services
-        cls.api_client = super(TestDefaultSecurityGroup, cls).getClsTestClient().getApiClient()
+        cls.api_client = super(
+                               TestDefaultSecurityGroup,
+                               cls
+                               ).getClsTestClient().getApiClient()
 
         # Get Zone, Domain and templates
         cls.domain = get_domain(cls.api_client, cls.services)
@@ -129,7 +132,7 @@ class TestDefaultSecurityGroup(cloudstackTestCase):
         template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
         cls.services["domainid"] = cls.domain.id
         cls.services["virtual_machine"]["zoneid"] = cls.zone.id
@@ -401,7 +404,7 @@ class TestAuthorizeIngressRule(cloudstackTestCase):
         template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
         cls.services["domainid"] = cls.domain.id
         cls.services["virtual_machine"]["zoneid"] = cls.zone.id
@@ -536,7 +539,7 @@ class TestRevokeIngressRule(cloudstackTestCase):
         template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
         cls.services["domainid"] = cls.domain.id
         cls.services["virtual_machine"]["zoneid"] = cls.zone.id
@@ -694,7 +697,7 @@ class TestDhcpOnlyRouter(cloudstackTestCase):
         template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
 
         cls.services["domainid"] = cls.domain.id
@@ -781,7 +784,18 @@ class TestDhcpOnlyRouter(cloudstackTestCase):
                             "Check list router response for router state"
                         )
 
-        result = get_process_status(
+        if self.apiclient.hypervisor.lower() == 'vmware':
+            result = get_process_status(
+                                self.apiclient.connection.mgtSvr,
+                                22,
+                                self.apiclient.connection.user,
+                                self.apiclient.connection.passwd,
+                                router.linklocalip,
+                                "service dnsmasq status",
+                                hypervisor=self.apiclient.hypervisor
+                                )
+        else:
+            result = get_process_status(
                                 host.ipaddress,
                                 self.services['host']["publicport"],
                                 self.services['host']["username"],
@@ -830,7 +844,7 @@ class TestdeployVMWithUserData(cloudstackTestCase):
         template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
 
         cls.services["domainid"] = cls.domain.id
@@ -989,7 +1003,7 @@ class TestDeleteSecurityGroup(cloudstackTestCase):
         template = get_template(
                             self.apiclient,
                             self.zone.id,
-                            self.services["ostypeid"]
+                            self.services["ostype"]
                             )
 
         self.services["domainid"] = self.domain.id
@@ -1234,7 +1248,7 @@ class TestIngressRule(cloudstackTestCase):
         template = get_template(
                             self.apiclient,
                             self.zone.id,
-                            self.services["ostypeid"]
+                            self.services["ostype"]
                             )
 
         self.services["domainid"] = self.domain.id

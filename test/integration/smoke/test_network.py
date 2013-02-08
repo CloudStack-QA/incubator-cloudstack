@@ -40,7 +40,7 @@ class Services:
                             # Cent OS 5.3 (64 bit)
                             "mode": 'advanced',
                             # Networking mode: Basic or advanced
-                            "lb_switch_wait": 10,
+                            "lb_switch_wait": 30,
                             # Time interval after which LB switches the requests
                             "sleep": 60,
                             "timeout":10,
@@ -670,6 +670,32 @@ class TestLoadBalancingRule(cloudstackTestCase):
         cleanup_resources(cls.api_client, cls._cleanup)
         return
 
+    def try_ssh(self, src_nat_ip_addr, hostnames):
+        try:
+            self.debug(
+                "SSH into VM (IPaddress: %s) & NAT Rule (Public IP: %s)" %
+                (self.vm_1.ipaddress, src_nat_ip_addr.ipaddress)
+                )
+
+            ssh_1 = remoteSSHClient(
+                                        src_nat_ip_addr.ipaddress,
+                                        self.services['lbrule']["publicport"],
+                                        self.vm_1.username,
+                                        self.vm_1.password
+                                        )
+
+            # If Round Robin Algorithm is chosen,
+            # each ssh command should alternate between VMs
+            #hostnames = [ssh_1.execute("hostname")[0]]
+            hostnames.append(ssh_1.execute("hostname")[0])
+        
+        except Exception as e:
+            self.fail("%s: SSH failed for VM with IP Address: %s" %
+                                        (e, src_nat_ip_addr.ipaddress))
+
+        time.sleep(self.services["lb_switch_wait"])
+        return 
+
     @attr(tags = ["advanced", "advancedns", "smoke"])
     def test_01_create_lb_rule_src_nat(self):
         """Test to create Load balancing rule with source NAT"""
@@ -782,49 +808,13 @@ class TestLoadBalancingRule(cloudstackTestCase):
             [self.vm_1.id, self.vm_2.id],
             "Check List Load Balancer instances Rules returns valid VM ID"
             )
-        try:
-            self.debug(
-                "SSH into VM (IPaddress: %s) & NAT Rule (Public IP: %s)" %
-                (self.vm_1.ipaddress, src_nat_ip_addr.ipaddress)
-                )
-
-            ssh_1 = remoteSSHClient(
-                                        src_nat_ip_addr.ipaddress,
-                                        self.services['lbrule']["publicport"],
-                                        self.vm_1.username,
-                                        self.vm_1.password
-                                        )
-
-            # If Round Robin Algorithm is chosen,
-            # each ssh command should alternate between VMs
-            hostnames = [ssh_1.execute("hostname")[0]]
-
-        except Exception as e:
-            self.fail("%s: SSH failed for VM with IP Address: %s" %
-                                        (e, src_nat_ip_addr.ipaddress))
-
-        time.sleep(self.services["lb_switch_wait"])
-
-        try:
-            self.debug("SSHing into IP address: %s after adding VMs (ID: %s , %s)" %
-                                            (
-                                             src_nat_ip_addr.ipaddress,
-                                             self.vm_1.id,
-                                             self.vm_2.id
-                                             ))
-
-            ssh_2 = remoteSSHClient(
-                                        src_nat_ip_addr.ipaddress,
-                                        self.services['lbrule']["publicport"],
-                                        self.vm_1.username,
-                                        self.vm_1.password
-                                        )
-            hostnames.append(ssh_2.execute("hostname")[0])
-
-        except Exception as e:
-            self.fail("%s: SSH failed for VM with IP Address: %s" %
-                                        (e, src_nat_ip_addr.ipaddress))
-
+        hostnames = []
+        self.try_ssh(src_nat_ip_addr, hostnames)
+        self.try_ssh(src_nat_ip_addr, hostnames)
+        self.try_ssh(src_nat_ip_addr, hostnames)
+        self.try_ssh(src_nat_ip_addr, hostnames)
+        self.try_ssh(src_nat_ip_addr, hostnames)
+       
         self.debug("Hostnames: %s" % str(hostnames))
         self.assertIn(
                       self.vm_1.name,

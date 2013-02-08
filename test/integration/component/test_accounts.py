@@ -17,6 +17,7 @@
 """ P1 tests for Account
 """
 #Import Local Modules
+from nose.plugins.attrib import attr
 from marvin.cloudstackTestCase import *
 from marvin.cloudstackAPI import *
 from marvin.integration.lib.utils import *
@@ -59,7 +60,7 @@ class Services:
                                     "cpunumber": 1,
                                     "cpuspeed": 100,
                                     # in MHz
-                                    "memory": 64,
+                                    "memory": 128,
                                     # In MBs
                         },
                          "virtual_machine": {
@@ -77,7 +78,7 @@ class Services:
                          "template": {
                                 "displaytext": "Public Template",
                                 "name": "Public template",
-                                "ostypeid": 'bc66ada0-99e7-483b-befc-8fb0c2129b70',
+                                "ostype": 'CentOS 5.3 (64-bit)',
                                 "url": "http://download.cloud.com/releases/2.0.0/UbuntuServer-10-04-64bit.vhd.bz2",
                                 "hypervisor": 'XenServer',
                                 "format": 'VHD',
@@ -90,7 +91,7 @@ class Services:
                                     "privateport": 22,
                                     "protocol": 'TCP',
                         },
-                        "ostypeid": 'bc66ada0-99e7-483b-befc-8fb0c2129b70',
+                        "ostype": 'CentOS 5.3 (64-bit)',
                         # Cent OS 5.3 (64 bit)
                         "sleep": 60,
                         "timeout": 10,
@@ -112,7 +113,7 @@ class TestAccounts(cloudstackTestCase):
         cls.template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
         cls.services["virtual_machine"]["zoneid"] = cls.zone.id
         cls.services["virtual_machine"]["template"] = cls.template.id
@@ -241,7 +242,7 @@ class TestRemoveUserFromAccount(cloudstackTestCase):
         cls.template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
         cls.services["virtual_machine"]["zoneid"] = cls.zone.id
         cls.services["virtual_machine"]["template"] = cls.template.id
@@ -258,6 +259,7 @@ class TestRemoveUserFromAccount(cloudstackTestCase):
 
         cls._cleanup = [
                         cls.service_offering,
+                        cls.account
                         ]
         return
 
@@ -757,8 +759,8 @@ class TestServiceOfferingHierarchy(cloudstackTestCase):
                         cls.account_1,
                         cls.account_2,
                         cls.service_offering,
-                        cls.domain_1,
                         cls.domain_2,
+                        cls.domain_1,
                         ]
         return
 
@@ -879,6 +881,19 @@ class TesttemplateHierarchy(cloudstackTestCase):
                             admin=True,
                             domainid=cls.domain_2.id
                             )
+        # Finding OSTypeid for the new template
+        ostypes = list_os_types(
+                            cls.api_client,
+                            description=cls.services["template"]["ostype"],
+                            listall=True
+                            )
+
+        if isinstance(ostypes, list):
+            cls.services["template"]["ostypeid"] = ostypes[0].id
+        else:
+            raise unittest.SkipTest(
+                    "Unable to find OSType with description: %s" %
+                                    cls.services["template"]["ostype"])
 
         cls.template = Template.register(
                                             cls.api_client,
@@ -1029,7 +1044,7 @@ class TestAddVmToSubDomain(cloudstackTestCase):
         cls.template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
         cls.services["virtual_machine"]["zoneid"] = cls.zone.id
         cls.vm_1 = VirtualMachine.create(
@@ -1618,7 +1633,7 @@ class TestDomainForceRemove(cloudstackTestCase):
         cls.template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
 
         cls.services["virtual_machine"]["zoneid"] = cls.zone.id

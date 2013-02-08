@@ -14,7 +14,6 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-
 import marvin
 from nose.plugins.attrib import attr
 from marvin.cloudstackTestCase import *
@@ -48,7 +47,7 @@ class Services:
                                     "displaytext": "Tiny Instance",
                                     "cpunumber": 1,
                                     "cpuspeed": 100,    # in MHz
-                                    "memory": 64,       # In MBs
+                                    "memory": 128,       # In MBs
                         },
                         "disk_offering": {
                                     "displaytext": "Small",
@@ -71,10 +70,10 @@ class Services:
                         "template": {
                                     "displaytext": "Cent OS Template",
                                     "name": "Cent OS Template",
-                                    "ostypeid": '01853327-513e-4508-9628-f1f55db1946f',
+                                    "ostype": 'CentOS 5.3 (64-bit)',
                                     "templatefilter": 'self',
                         },
-                        "ostypeid": '01853327-513e-4508-9628-f1f55db1946f',
+                        "ostype": 'CentOS 5.3 (64-bit)',
                         # Cent OS 5.3 (64 bit)
                         "sleep": 60,
                         "timeout": 10,
@@ -87,7 +86,7 @@ class TestAllocationState(cloudstackTestCase):
     @classmethod
     def setUpClass(cls):
         cls.api_client = super(
-                               TestResources,
+                               TestAllocationState,
                                cls
                                ).getClsTestClient().getApiClient()
         cls.services = Services().services

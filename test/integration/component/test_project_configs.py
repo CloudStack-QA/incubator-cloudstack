@@ -70,7 +70,7 @@ class Services:
                                     "displaytext": "Tiny Instance",
                                     "cpunumber": 1,
                                     "cpuspeed": 100,    # in MHz
-                                    "memory": 64,       # In MBs
+                                    "memory": 128,       # In MBs
                         },
                          "virtual_machine": {
                                     "displayname": "Test VM",
@@ -87,7 +87,7 @@ class Services:
                          "template": {
                                 "displaytext": "Public Template",
                                 "name": "Public template",
-                                "ostypeid": '01853327-513e-4508-9628-f1f55db1946f',
+                                "ostype": 'CentOS 5.3 (64-bit)',
                                 "url": "http://download.cloud.com/releases/2.0.0/UbuntuServer-10-04-64bit.vhd.bz2",
                                 "hypervisor": 'XenServer',
                                 "format": 'VHD',
@@ -98,7 +98,7 @@ class Services:
                         "configs": {
                                 "project.invite.timeout": 300,
                         },
-                        "ostypeid": '01853327-513e-4508-9628-f1f55db1946f',
+                        "ostype": 'CentOS 5.3 (64-bit)',
                         # Cent OS 5.3 (64 bit)
                         "sleep": 60,
                         "timeout": 10,
@@ -184,23 +184,6 @@ class TestUserProjectCreation(cloudstackTestCase):
         # 2. Create a Project as domain admin
         # 3. Create a Project as domain user
         # 4. In both 2 and 3 project creation should be successful
-
-        configs = Configurations.list(
-                                      self.apiclient,
-                                      name='allow.user.create.projects'
-                                      )
-        self.assertEqual(
-                            isinstance(configs, list),
-                            True,
-                            "Check for a valid list configurations response"
-                            )
-        config = configs[0]
-        self.assertEqual(
-                            (config.value).lower(),
-                            'true',
-                            "'allow.user.create.projects' should be true"
-                            )
-
         # Create project as a domain admin
 
         project = Project.create(
@@ -351,22 +334,6 @@ class TestProjectCreationNegative(cloudstackTestCase):
         # 2. Create a Project as domain admin. Project creation should be
         #    successful.
         # 3. Create a Project as domain user. Project creation should fail
-
-        configs = Configurations.list(
-                                      self.apiclient,
-                                      name='allow.user.create.projects'
-                                      )
-        self.assertEqual(
-                            isinstance(configs, list),
-                            True,
-                            "Check for a valid list configurations response"
-                            )
-        config = configs[0]
-        self.assertEqual(
-                            (config.value).lower(),
-                            'false',
-                            "'allow.user.create.projects' should be true"
-                            )
 
         # Create project as a domain admin
         project = Project.create(
@@ -566,6 +533,7 @@ class TestProjectInviteRequired(cloudstackTestCase):
                             )
 
         return
+
 
 class TestProjectInviteRequiredTrue(cloudstackTestCase):
 
@@ -1293,89 +1261,4 @@ class TestProjectInviteTimeout(cloudstackTestCase):
                             None,
                             "Check for a valid list accounts response"
                             )
-        return
-
-    @unittest.skip("Requires SMPT configs")
-    def test_09_invite_to_project_by_email(self):
-        """Test invite user to project by email"""
-        
-        # Validate the following:
-        # 1. Set configuration to 5 mins
-        # 2. Create a Project
-        # 3. Add users to the project
-        # 4. As a user decline invitation within 5 mins.
-        # 5. Verify invitation is rejected and user doesn't become regular
-        #    user.
-
-        # Verify 'project.invite.required' is set to false
-        configs = Configurations.list(
-                                      self.apiclient,
-                                      name='project.invite.timeout'
-                                      )
-        self.assertEqual(
-                            isinstance(configs, list),
-                            True,
-                            "Check for a valid list configurations response"
-                            )
-        config = configs[0]
-        self.assertEqual(
-                    int(config.value),
-                    self.services["configs"]["project.invite.timeout"],
-                    "'project.invite.timeout' should be %s" %
-                            self.services["configs"]["project.invite.timeout"]
-                    )
-
-        # Create project as a domain admin
-        project = Project.create(
-                                 self.apiclient,
-                                 self.services["project"],
-                                 account=self.account.account.name,
-                                 domainid=self.account.account.domainid
-                                 )
-        # Cleanup created project at end of test
-        self.cleanup.append(project)
-
-        self.debug("Created project with domain admin with ID: %s" %
-                                                                project.id)
-
-        list_projects_reponse = Project.list(
-                                             self.apiclient,
-                                             id=project.id,
-                                             listall=True
-                                             )
-
-        self.assertEqual(
-                            isinstance(list_projects_reponse, list),
-                            True,
-                            "Check for a valid list projects response"
-                            )
-        list_project = list_projects_reponse[0]
-
-        self.assertNotEqual(
-                        len(list_projects_reponse),
-                        0,
-                        "Check list project response returns a valid project"
-                        )
-
-        self.assertEqual(
-                            project.name,
-                            list_project.name,
-                            "Check project name from list response"
-                            )
-        self.debug("Adding user with email: %s to project: %s" % (
-                                                      self.user.account.email,
-                                                      project.name
-                                                      ))
-
-        # Add user to the project
-        project.addAccount(
-                           self.apiclient,
-                           email=self.user.account.user[0].email
-                           )
-
-        # Fetch the latest mail sent to user
-        mail_content = fetch_latest_mail(
-                                         self.services["mail_account"],
-                                         from_mail=self.user.account.user[0].email
-                                         )
         return

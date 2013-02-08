@@ -40,8 +40,8 @@ class Services:
                                     "name": "Tiny Instance",
                                     "displaytext": "Tiny Instance",
                                     "cpunumber": 1,
-                                    "cpuspeed": 100,    # in MHz
-                                    "memory": 64,       # In MBs
+                                    "cpuspeed": 100, # in MHz
+                                    "memory": 128, # In MBs
                                     },
                         "virtual_machine":
                                     {
@@ -89,9 +89,9 @@ class Services:
                                     "cidr": '55.55.0.0/11',
                                     # Any network (For creating FW rule
                                     },
-                         "ostypeid": '01853327-513e-4508-9628-f1f55db1946f',
+                         "ostype": 'CentOS 5.3 (64-bit)',
                          # Used for Get_Template : CentOS 5.3 (64 bit)
-                         "mode": 'advanced',    # Networking mode: Advanced, basic
+                         "mode": 'advanced', # Networking mode: Advanced, basic
                         }
 
 
@@ -100,7 +100,10 @@ class TestRouterServices(cloudstackTestCase):
     @classmethod
     def setUpClass(cls):
 
-        cls.api_client = super(TestRouterServices, cls).getClsTestClient().getApiClient()
+        cls.api_client = super(
+                               TestRouterServices,
+                               cls
+                               ).getClsTestClient().getApiClient()
         cls.services = Services().services
         # Get Zone, Domain and templates
         cls.domain = get_domain(cls.api_client, cls.services)
@@ -108,7 +111,7 @@ class TestRouterServices(cloudstackTestCase):
         cls.template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
         cls.services["virtual_machine"]["zoneid"] = cls.zone.id
 
@@ -148,7 +151,10 @@ class TestRouterServices(cloudstackTestCase):
     @classmethod
     def tearDownClass(cls):
         try:
-            cls.api_client = super(TestRouterServices, cls).getClsTestClient().getApiClient()
+            cls.api_client = super(
+                                   TestRouterServices,
+                                   cls
+                                   ).getClsTestClient().getApiClient()
             #Clean up, terminate the created templates
             cleanup_resources(cls.api_client, cls.cleanup)
 
@@ -168,7 +174,7 @@ class TestRouterServices(cloudstackTestCase):
         self._cleanup = []
         return
 
-    @attr(tags = ["advanced"])
+    @attr(tags=["advanced"])
     def test_01_AdvancedZoneRouterServices(self):
         """Test advanced zone router services
         """
@@ -314,8 +320,8 @@ class TestRouterServices(cloudstackTestCase):
                     )
         return
 
-    @attr(configuration = "network.gc")
-    @attr(tags = ["advanced"])
+    @attr(configuration="network.gc")
+    @attr(tags=["advanced"])
     def test_02_NetworkGarbageCollection(self):
         """Test network garbage collection
         """
@@ -473,7 +479,7 @@ class TestRouterServices(cloudstackTestCase):
         self._cleanup.append(self.vm_2)
         return
 
-    @attr(tags = ["advanced"])
+    @attr(tags=["advanced"])
     def test_03_RouterStartOnVmDeploy(self):
         """Test router start on VM deploy
         """
@@ -587,7 +593,10 @@ class TestRouterStopCreatePF(cloudstackTestCase):
     @classmethod
     def setUpClass(cls):
 
-        cls.api_client = super(TestRouterStopCreatePF, cls).getClsTestClient().getApiClient()
+        cls.api_client = super(
+                               TestRouterStopCreatePF,
+                               cls
+                               ).getClsTestClient().getApiClient()
         cls.services = Services().services
         # Get Zone, Domain and templates
         cls.domain = get_domain(cls.api_client, cls.services)
@@ -595,7 +604,7 @@ class TestRouterStopCreatePF(cloudstackTestCase):
         template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
         cls.services["virtual_machine"]["zoneid"] = cls.zone.id
 
@@ -627,7 +636,10 @@ class TestRouterStopCreatePF(cloudstackTestCase):
     @classmethod
     def tearDownClass(cls):
         try:
-            cls.api_client = super(TestRouterStopCreatePF, cls).getClsTestClient().getApiClient()
+            cls.api_client = super(
+                                   TestRouterStopCreatePF,
+                                   cls
+                                   ).getClsTestClient().getApiClient()
             # Clean up, terminate the created resources
             cleanup_resources(cls.api_client, cls.cleanup)
 
@@ -648,7 +660,7 @@ class TestRouterStopCreatePF(cloudstackTestCase):
         self._cleanup = []
         return
 
-    @attr(tags = ["advanced", "advancedns"])
+    @attr(tags=["advanced", "advancedns"])
     def test_01_RouterStopCreatePF(self):
         """Test router stop create port forwarding
         """
@@ -806,7 +818,7 @@ class TestRouterStopCreateLB(cloudstackTestCase):
         template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
         cls.services["virtual_machine"]["zoneid"] = cls.zone.id
 
@@ -858,7 +870,7 @@ class TestRouterStopCreateLB(cloudstackTestCase):
         self._cleanup = []
         return
 
-    @attr(tags = ["advanced", "advancedns"])
+    @attr(tags=["advanced", "advancedns"])
     def test_01_RouterStopCreateLB(self):
         """Test router stop create Load balancing
         """
@@ -1017,7 +1029,7 @@ class TestRouterStopCreateFW(cloudstackTestCase):
         template = get_template(
                             cls.api_client,
                             cls.zone.id,
-                            cls.services["ostypeid"]
+                            cls.services["ostype"]
                             )
         cls.services["virtual_machine"]["zoneid"] = cls.zone.id
 
@@ -1068,7 +1080,7 @@ class TestRouterStopCreateFW(cloudstackTestCase):
         self._cleanup = []
         return
 
-    @attr(tags = ["advanced", "advancedns"])
+    @attr(tags=["advanced", "advancedns"])
     def test_01_RouterStopCreateFW(self):
         """Test router stop create Firewall rule
         """
@@ -1207,8 +1219,19 @@ class TestRouterStopCreateFW(cloudstackTestCase):
                         "Check for list hosts response return valid data"
                         )
         host = hosts[0]
-        # For DNS and DHCP check 'dnsmasq' process status
-        result = get_process_status(
+
+        if self.apiclient.hypervisor.lower() == 'vmware':
+            result = get_process_status(
+                                self.apiclient.connection.mgtSvr,
+                                22,
+                                self.apiclient.connection.user,
+                                self.apiclient.connection.passwd,
+                                router.linklocalip,
+                                'iptables -t nat -L',
+                                hypervisor=self.apiclient.hypervisor
+                                )
+        else:
+            result = get_process_status(
                                 host.ipaddress,
                                 self.services['host']["publicport"],
                                 self.services['host']["username"],
@@ -1216,6 +1239,7 @@ class TestRouterStopCreateFW(cloudstackTestCase):
                                 router.linklocalip,
                                 'iptables -t nat -L'
                                 )
+
         self.debug("iptables -t nat -L: %s" % result)
         self.debug("Public IP: %s" % public_ip.ipaddress)
         res = str(result)

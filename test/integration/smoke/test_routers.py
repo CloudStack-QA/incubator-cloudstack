@@ -49,7 +49,6 @@ class Services:
                                         "username": "root",
                                         "password": "password",
                                         "ssh_port": 22,
-                                        "hypervisor": 'XenServer',
                                         "privateport": 22,
                                         "publicport": 22,
                                         "protocol": 'TCP',
@@ -61,7 +60,7 @@ class Services:
                                         "username": "testuser",
                                         "password": "password",
                                         },
-                         "ostype": "CentOS 5.3 (64-bit)",
+                         "ostype": 'CentOS 5.3 (64-bit)',
                          "sleep": 60,
                          "timeout": 10,
                          "mode": 'advanced', #Networking mode: Basic, Advanced
@@ -174,8 +173,18 @@ class TestRouterServices(cloudstackTestCase):
                             'Running',
                             "Check list router response for router state"
                         )
-
-        result = get_process_status(
+        if self.apiclient.hypervisor.lower() == 'vmware':
+            result = get_process_status(
+                                self.apiclient.connection.mgtSvr,
+                                22,
+                                self.apiclient.connection.user,
+                                self.apiclient.connection.passwd,
+                                router.linklocalip,
+                                "service dnsmasq status",
+                                hypervisor=self.apiclient.hypervisor
+                                )
+        else:
+            result = get_process_status(
                                 host.ipaddress,
                                 self.services['virtual_machine']["publicport"],
                                 self.vm_1.username,
@@ -237,7 +246,18 @@ class TestRouterServices(cloudstackTestCase):
                             "Check list router response for router state"
                         )
 
-        result = get_process_status(
+        if self.apiclient.hypervisor.lower() == 'vmware':
+            result = get_process_status(
+                                self.apiclient.connection.mgtSvr,
+                                22,
+                                self.apiclient.connection.user,
+                                self.apiclient.connection.passwd,
+                                router.linklocalip,
+                                "service dnsmasq status",
+                                hypervisor=self.apiclient.hypervisor
+                                )
+        else:
+            result = get_process_status(
                                 host.ipaddress,
                                 self.services['virtual_machine']["publicport"],
                                 self.vm_1.username,
@@ -254,7 +274,18 @@ class TestRouterServices(cloudstackTestCase):
                             "Check dnsmasq service is running or not"
                         )
 
-        result = get_process_status(
+        if self.apiclient.hypervisor.lower() == 'vmware':
+            result = get_process_status(
+                                self.apiclient.connection.mgtSvr,
+                                22,
+                                self.apiclient.connection.user,
+                                self.apiclient.connection.passwd,
+                                router.linklocalip,
+                                "service haproxy status",
+                                hypervisor=self.apiclient.hypervisor
+                                )
+        else:
+            result = get_process_status(
                                 host.ipaddress,
                                 self.services['virtual_machine']["publicport"],
                                 self.vm_1.username,
@@ -418,7 +449,18 @@ class TestRouterServices(cloudstackTestCase):
                         )
         host = hosts[0]
 
-        res = get_process_status(
+        if self.apiclient.hypervisor.lower() == 'vmware':
+            res = get_process_status(
+                                self.apiclient.connection.mgtSvr,
+                                22,
+                                self.apiclient.connection.user,
+                                self.apiclient.connection.passwd,
+                                router.linklocalip,
+                                "uptime",
+                                hypervisor=self.apiclient.hypervisor
+                                )
+        else:
+            res = get_process_status(
                                 host.ipaddress,
                                 self.services['virtual_machine']["publicport"],
                                 self.vm_1.username,
