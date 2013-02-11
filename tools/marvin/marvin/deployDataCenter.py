@@ -405,6 +405,11 @@ class deployDataCenters():
                                       dbSvr.passwd, dbSvr.db)
 
         self.apiClient = self.testClient.getApiClient()
+        """set hypervisor"""
+        if mgt.hypervisor:
+            self.apiClient.hypervisor = mgt.hypervisor
+        else:
+            self.apiClient.hypervisor = "XenServer"     #Defaults to Xenserver
 
     def updateConfiguration(self, globalCfg):
         if globalCfg is None:
