@@ -237,7 +237,7 @@ class VirtualMachine:
             cmd.zoneid = zoneid
         elif "zoneid" in services:
             cmd.zoneid = services["zoneid"]
-        cmd.hypervisor = services["hypervisor"]
+        cmd.hypervisor = apiclient.hypervisor
 
         if accountid:
             cmd.account = accountid
@@ -344,6 +344,12 @@ class VirtualMachine:
         cmd = rebootVirtualMachine.rebootVirtualMachineCmd()
         cmd.id = self.id
         apiclient.rebootVirtualMachine(cmd)
+
+    def recover(self, apiclient):
+        """Recover the instance"""
+        cmd = recoverVirtualMachine.recoverVirtualMachineCmd()
+        cmd.id = self.id
+        apiclient.recoverVirtualMachine(cmd)
 
     def get_ssh_client(self, ipaddress=None, reconnect=False, port=None):
         """Get SSH object of VM"""
@@ -632,7 +638,7 @@ class Template:
         cmd.displaytext = services["displaytext"]
         cmd.name = "-".join([services["name"], random_gen()])
         cmd.format = services["format"]
-        cmd.hypervisor = services["hypervisor"]
+        cmd.hypervisor = apiclient.hypervisor
 
         if "ostypeid" in services:
             cmd.ostypeid = services["ostypeid"]
@@ -939,6 +945,12 @@ class NATRule:
 
         cmd.privateport = services["privateport"]
         cmd.publicport = services["publicport"]
+        if "privateendport" in services:
+            cmd.privateendport = services["privateendport"]
+        if "publicendport" in services:
+            cmd.publicendport = services["publicendport"]
+        
+        cmd.protocol = services["protocol"]
         cmd.protocol = services["protocol"]
         cmd.virtualmachineid = virtual_machine.id
 
@@ -1012,12 +1024,14 @@ class StaticNATRule:
         return(apiclient.listIpForwardingRules(cmd))
 
     @classmethod
-    def enable(cls, apiclient, ipaddressid, virtualmachineid):
+    def enable(cls, apiclient, ipaddressid, virtualmachineid, networkid=None):
         """Enables Static NAT rule"""
 
         cmd = enableStaticNat.enableStaticNatCmd()
         cmd.ipaddressid = ipaddressid
         cmd.virtualmachineid = virtualmachineid
+        if networkid:
+            cmd.networkid = networkid
         apiclient.enableStaticNat(cmd)
         return
 
@@ -1092,6 +1106,15 @@ class ServiceOffering:
         cmd.name = services["name"]
         if "storagetype" in services:
             cmd.storagetype = services["storagetype"]
+            
+        if "systemvmtype" in services:
+            cmd.systemvmtype = services['systemvmtype']
+        
+        if "issystem" in services: 
+            cmd.issystem = services['issystem']
+
+        if "tags" in services:
+            cmd.tags = services["tags"]
 
         # Service Offering private to that domain
         if domainid:
@@ -1384,7 +1407,7 @@ class Cluster:
         """Create Cluster"""
         cmd = addCluster.addClusterCmd()
         cmd.clustertype = services["clustertype"]
-        cmd.hypervisor = services["hypervisor"]
+        cmd.hypervisor = apiclient.hypervisor
 
         if zoneid:
             cmd.zoneid = zoneid
@@ -1434,7 +1457,7 @@ class Host:
         """Create Host in cluster"""
 
         cmd = addHost.addHostCmd()
-        cmd.hypervisor = services["hypervisor"]
+        cmd.hypervisor = apiclient.hypervisor
         cmd.url = services["url"]
         cmd.clusterid = cluster.id
 

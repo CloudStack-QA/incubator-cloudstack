@@ -31,11 +31,15 @@ from cloudstackAPI import *
 import jsonHelper
 
 class cloudConnection(object):
-    def __init__(self, mgtSvr, port=8096, apiKey = None, securityKey = None, asyncTimeout=3600, logging=None, protocol='http', path='/client/api'):
+    def __init__(self, mgtSvr, port=8096, user=None, passwd=None, apiKey = None, securityKey = None, asyncTimeout=3600, logging=None, protocol='http', path='/client/api'):
         self.apiKey = apiKey
         self.securityKey = securityKey
         self.mgtSvr = mgtSvr
         self.port = port
+        if user:
+            self.user = user
+        if passwd:
+            self.passwd = passwd
         self.logging = logging
         if protocol != 'http' and protocol != 'https':
             raise ValueError("Protocol must be 'http' or 'https'.")
@@ -56,7 +60,7 @@ class cloudConnection(object):
             pass
     
     def __copy__(self):
-        return cloudConnection(self.mgtSvr, self.port, self.apiKey, self.securityKey, self.asyncTimeout, self.logging, self.protocol, self.path)
+        return cloudConnection(self.mgtSvr, self.port, self.user, self.passwd, self.apiKey, self.securityKey, self.asyncTimeout, self.logging, self.protocol, self.path)
     
     def make_request_with_auth(self, command, requests={}):
         requests["command"] = command
@@ -85,6 +89,9 @@ class cloudConnection(object):
             elif hasattr(e, 'code'):
                 if self.logging is not None:
                     self.logging.critical("server returned %d error code"%e.code)
+            raise e
+        except urllib2.HTTPError as e:
+            print e
             raise e
         except httplib.HTTPException, h:
             if self.logging is not None:
