@@ -37,7 +37,6 @@ import javax.inject.Inject;
 import javax.naming.ConfigurationException;
 
 import org.apache.log4j.Logger;
-import org.springframework.stereotype.Component;
 
 import com.cloud.agent.AgentManager;
 import com.cloud.agent.AgentManager.OnError;
@@ -69,12 +68,10 @@ import com.cloud.agent.api.to.VirtualMachineTO;
 import com.cloud.agent.manager.Commands;
 import com.cloud.agent.manager.allocator.HostAllocator;
 import com.cloud.alert.AlertManager;
-import com.cloud.capacity.CapacityManager;
 import com.cloud.cluster.ClusterManager;
 import com.cloud.configuration.Config;
 import com.cloud.configuration.ConfigurationManager;
 import com.cloud.configuration.dao.ConfigurationDao;
-import com.cloud.consoleproxy.ConsoleProxyManager;
 import com.cloud.dc.DataCenter;
 import com.cloud.dc.DataCenterVO;
 import com.cloud.dc.HostPodVO;
@@ -152,12 +149,13 @@ import com.cloud.utils.fsm.StateMachine2;
 import com.cloud.vm.ItWorkVO.Step;
 import com.cloud.vm.VirtualMachine.Event;
 import com.cloud.vm.VirtualMachine.State;
-import com.cloud.vm.dao.ConsoleProxyDao;
-import com.cloud.vm.dao.DomainRouterDao;
 import com.cloud.vm.dao.NicDao;
-import com.cloud.vm.dao.SecondaryStorageVmDao;
 import com.cloud.vm.dao.UserVmDao;
 import com.cloud.vm.dao.VMInstanceDao;
+import com.cloud.vm.snapshot.VMSnapshot;
+import com.cloud.vm.snapshot.VMSnapshotManager;
+import com.cloud.vm.snapshot.VMSnapshotVO;
+import com.cloud.vm.snapshot.dao.VMSnapshotDao;
 
 @Local(value = VirtualMachineManager.class)
 public class VirtualMachineManagerImpl extends ManagerBase implements VirtualMachineManager, Listener {
@@ -190,12 +188,6 @@ public class VirtualMachineManagerImpl extends ManagerBase implements VirtualMac
     @Inject
     protected UserVmDao _userVmDao;
     @Inject
-    protected DomainRouterDao _routerDao;
-    @Inject
-    protected ConsoleProxyDao _consoleDao;
-    @Inject
-    protected SecondaryStorageVmDao _secondaryDao;
-    @Inject
     protected NicDao _nicsDao;
     @Inject
     protected AccountManager _accountMgr;
@@ -210,11 +202,7 @@ public class VirtualMachineManagerImpl extends ManagerBase implements VirtualMac
     @Inject
     protected VolumeDao _volsDao;
     @Inject
-    protected ConsoleProxyManager _consoleProxyMgr;
-    @Inject
     protected ConfigurationManager _configMgr;
-    @Inject
-    protected CapacityManager _capacityMgr;
     @Inject
     protected HighAvailabilityManager _haMgr;
     @Inject
@@ -227,6 +215,8 @@ public class VirtualMachineManagerImpl extends ManagerBase implements VirtualMac
     protected HypervisorGuruManager _hvGuruMgr;
     @Inject
     protected NetworkDao _networkDao;
+    @Inject
+    protected VMSnapshotDao _vmSnapshotDao;
 
     @Inject
     protected List<DeploymentPlanner> _planners;
@@ -236,6 +226,9 @@ public class VirtualMachineManagerImpl extends ManagerBase implements VirtualMac
 
     @Inject
     protected ResourceManager _resourceMgr;
+    
+    @Inject 
+    protected VMSnapshotManager _vmSnapshotMgr = null;
 
     @Inject
     protected ConfigurationDao _configDao;
@@ -590,7 +583,7 @@ public class VirtualMachineManagerImpl extends ManagerBase implements VirtualMac
     ConcurrentOperationException, ResourceUnavailableException {
         return advanceStart(vm, params, caller, account, null);
     }
-
+    
     @Override
     public <T extends VMInstanceVO> T advanceStart(T vm, Map<VirtualMachineProfile.Param, Object> params, User caller, Account account, DeploymentPlan planToDeploy)
             throws InsufficientCapacityException, ConcurrentOperationException, ResourceUnavailableException {
@@ -1143,6 +1136,12 @@ public class VirtualMachineManagerImpl extends ManagerBase implements VirtualMac
 
     @Override
     public boolean stateTransitTo(VMInstanceVO vm, VirtualMachine.Event e, Long hostId) throws NoTransitionException {
+        // if there are active vm snapshots task, state change is not allowed
+        if(_vmSnapshotMgr.hasActiveVMSnapshotTasks(vm.getId())){
+            s_logger.error("State transit with event: " + e + " failed due to: " + vm.getInstanceName() + " has active VM snapshots tasks");
+            return false;
+        }
+        
         State oldState = vm.getState();
         if (oldState == State.Starting) {
             if (e == Event.OperationSucceeded) {
@@ -1177,7 +1176,12 @@ public class VirtualMachineManagerImpl extends ManagerBase implements VirtualMac
             s_logger.debug("Unable to stop " + vm);
             return false;
         }
-
+        
+        if (!_vmSnapshotMgr.deleteAllVMSnapshots(vm.getId(),null)){
+            s_logger.debug("Unable to delete all snapshots for " + vm);
+            return false;
+        }
+        
         try {
             if (!stateTransitTo(vm, VirtualMachine.Event.DestroyRequested, vm.getHostId())) {
                 s_logger.debug("Unable to destroy the vm because it is not in the correct state: " + vm);
@@ -1626,6 +1630,19 @@ public class VirtualMachineManagerImpl extends ManagerBase implements VirtualMac
         s_logger.debug("Found " + vms.size() + " VMs for host " + hostId);
         for (VMInstanceVO vm : vms) {
             AgentVmInfo info = infos.remove(vm.getId());
+            
+            // sync VM Snapshots related transient states
+            List<VMSnapshotVO> vmSnapshotsInTrasientStates = _vmSnapshotDao.listByInstanceId(vm.getId(), VMSnapshot.State.Expunging,VMSnapshot.State.Reverting, VMSnapshot.State.Creating);
+            if(vmSnapshotsInTrasientStates.size() > 1){
+                s_logger.info("Found vm " + vm.getInstanceName() + " with VM snapshots in transient states, needs to sync VM snapshot state");
+                if(!_vmSnapshotMgr.syncVMSnapshot(vm, hostId)){
+                    s_logger.warn("Failed to sync VM in a transient snapshot related state: " + vm.getInstanceName());
+                    continue;
+                }else{
+                    s_logger.info("Successfully sync VM with transient snapshot: " + vm.getInstanceName());
+                }
+            }
+            
             VMInstanceVO castedVm = null;
             if (info == null) {
                 info = new AgentVmInfo(vm.getInstanceName(), getVmGuru(vm), vm, State.Stopped);
@@ -1743,8 +1760,27 @@ public class VirtualMachineManagerImpl extends ManagerBase implements VirtualMac
         for (VMInstanceVO vm : set_vms) {
             AgentVmInfo info =  infos.remove(vm.getId());
             VMInstanceVO castedVm = null;
-            if ((info == null && (vm.getState() == State.Running || vm.getState() == State.Starting))  
-                    ||  (info != null && (info.state == State.Running && vm.getState() == State.Starting))) 
+            
+            // sync VM Snapshots related transient states
+            List<VMSnapshotVO> vmSnapshotsInExpungingStates = _vmSnapshotDao.listByInstanceId(vm.getId(), VMSnapshot.State.Expunging, VMSnapshot.State.Creating,VMSnapshot.State.Reverting);
+            if(vmSnapshotsInExpungingStates.size() > 0){
+                s_logger.info("Found vm " + vm.getInstanceName() + " in state. " + vm.getState() + ", needs to sync VM snapshot state");
+                Long hostId = null;
+                Host host = null;
+                if(info != null && info.getHostUuid() != null){
+                    host = _hostDao.findByGuid(info.getHostUuid());
+                }
+                hostId = host == null ? (vm.getHostId() == null ? vm.getLastHostId() : vm.getHostId()) : host.getId();
+                if(!_vmSnapshotMgr.syncVMSnapshot(vm, hostId)){
+                    s_logger.warn("Failed to sync VM with transient snapshot: " + vm.getInstanceName());
+                    continue;
+                }else{
+                    s_logger.info("Successfully sync VM with transient snapshot: " + vm.getInstanceName());
+                }
+            }
+            
+            if ((info == null && (vm.getState() == State.Running || vm.getState() == State.Starting ))  
+            		||  (info != null && (info.state == State.Running && vm.getState() == State.Starting))) 
             {
                 s_logger.info("Found vm " + vm.getInstanceName() + " in inconsistent state. " + vm.getState() + " on CS while " +  (info == null ? "Stopped" : "Running") + " on agent");
                 info = new AgentVmInfo(vm.getInstanceName(), getVmGuru(vm), vm, State.Stopped);
@@ -1785,7 +1821,7 @@ public class VirtualMachineManagerImpl extends ManagerBase implements VirtualMac
                 }
             }
             else if (info != null && (vm.getState() == State.Stopped || vm.getState() == State.Stopping
-                    || vm.isRemoved() || vm.getState() == State.Destroyed || vm.getState() == State.Expunging)) {
+                    || vm.isRemoved() || vm.getState() == State.Destroyed || vm.getState() == State.Expunging )) {
                 Host host = _hostDao.findByGuid(info.getHostUuid());
                 if (host != null){
                     s_logger.warn("Stopping a VM which is stopped/stopping/destroyed/expunging " + info.name);
@@ -2260,6 +2296,7 @@ public class VirtualMachineManagerImpl extends ManagerBase implements VirtualMac
 
         Long clusterId = agent.getClusterId();
         long agentId = agent.getId();
+
         if (agent.getHypervisorType() == HypervisorType.XenServer) { // only for Xen
             StartupRoutingCommand startup = (StartupRoutingCommand) cmd;
             HashMap<String, Pair<String, State>> allStates = startup.getClusterVMStateChanges();
@@ -2375,7 +2412,7 @@ public class VirtualMachineManagerImpl extends ManagerBase implements VirtualMac
         if (newServiceOffering == null) {
             throw new InvalidParameterValueException("Unable to find a service offering with id " + newServiceOfferingId);
         }
-
+		
         // Check that the VM is stopped
         if (!vmInstance.getState().equals(State.Stopped)) {
             s_logger.warn("Unable to upgrade virtual machine " + vmInstance.toString() + " in state " + vmInstance.getState());
@@ -2538,7 +2575,7 @@ public class VirtualMachineManagerImpl extends ManagerBase implements VirtualMac
                 _networkModel.getNetworkRate(network.getId(), vm.getId()), 
                 _networkModel.isSecurityGroupSupportedInNetwork(network), 
                 _networkModel.getNetworkTag(vmProfile.getVirtualMachine().getHypervisorType(), network));
-        
+
         //1) Unplug the nic
         if (vm.getState() == State.Running) {
             NicTO nicTO = toNicTO(nicProfile, vmProfile.getVirtualMachine().getHypervisorType());
@@ -2555,11 +2592,11 @@ public class VirtualMachineManagerImpl extends ManagerBase implements VirtualMac
             throw new ResourceUnavailableException("Unable to remove vm " + vm + " from network, is not in the right state",
                     DataCenter.class, vm.getDataCenterId());
         }
-        
+
         //2) Release the nic
         _networkMgr.releaseNic(vmProfile, nic);
         s_logger.debug("Successfully released nic " + nic +  "for vm " + vm);
-        
+
         //3) Remove the nic
         _networkMgr.removeNic(vmProfile, nic);
         _nicsDao.expunge(nic.getId());
@@ -2594,7 +2631,7 @@ public class VirtualMachineManagerImpl extends ManagerBase implements VirtualMac
             s_logger.warn("Could not get a nic with " + network);
             return false;
         }
-        
+
         // don't delete default NIC on a user VM
         if (nic.isDefaultNic() && vm.getType() == VirtualMachine.Type.User ) {
             s_logger.warn("Failed to remove nic from " + vm + " in " + network + ", nic is default.");
@@ -2608,15 +2645,15 @@ public class VirtualMachineManagerImpl extends ManagerBase implements VirtualMac
 
         //1) Unplug the nic
         if (vm.getState() == State.Running) {
-        NicTO nicTO = toNicTO(nicProfile, vmProfile.getVirtualMachine().getHypervisorType());
-        s_logger.debug("Un-plugging nic for vm " + vm + " from network " + network);
-        boolean result = vmGuru.unplugNic(network, nicTO, vmTO, context, dest);
-        if (result) {
-            s_logger.debug("Nic is unplugged successfully for vm " + vm + " in network " + network );
-        } else {
-            s_logger.warn("Failed to unplug nic for the vm " + vm + " from network " + network);
-            return false;
-        }
+            NicTO nicTO = toNicTO(nicProfile, vmProfile.getVirtualMachine().getHypervisorType());
+            s_logger.debug("Un-plugging nic for vm " + vm + " from network " + network);
+            boolean result = vmGuru.unplugNic(network, nicTO, vmTO, context, dest);
+            if (result) {
+                s_logger.debug("Nic is unplugged successfully for vm " + vm + " in network " + network );
+            } else {
+                s_logger.warn("Failed to unplug nic for the vm " + vm + " from network " + network);
+                return false;
+            }
         } else if (vm.getState() != State.Stopped) {
             s_logger.warn("Unable to remove vm " + vm + " from network  " + network);
             throw new ResourceUnavailableException("Unable to remove vm " + vm + " from network, is not in the right state",

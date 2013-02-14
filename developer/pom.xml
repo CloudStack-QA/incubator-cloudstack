@@ -130,7 +130,7 @@
             </dependencies>
             <executions>
               <execution>
-                <phase>process-test-resources</phase>
+                <phase>process-resources</phase>
                 <id>create-schema</id>
                 <goals>
                   <goal>java</goal>
@@ -177,6 +177,12 @@
                 <!-- Do dry run using -d or dash-dash-dry -->
                 <!-- Enable verbosity by -v or dash-dash-verbose -->
               </arguments>
+              <systemProperties>
+                <systemProperty>
+                  <key>catalina.home</key>
+                  <value>${project.parent.basedir}/utils</value>
+                </systemProperty>
+              </systemProperties>
             </configuration>
           </plugin>
         </plugins>
@@ -253,7 +259,7 @@
             </dependencies>
             <executions>
               <execution>
-                <phase>process-test-resources</phase>
+                <phase>process-resources</phase>
                 <id>create-schema</id>
                 <goals>
                   <goal>java</goal>
@@ -281,6 +287,12 @@
                 <argument>--rootpassword=${db.root.password}</argument>
                 <!-- enable verbosity by -v or dash-dash-verbose -->
               </arguments>
+              <systemProperties>
+                <systemProperty>
+                  <key>catalina.home</key>
+                  <value>${project.parent.basedir}/utils</value>
+                </systemProperty>
+              </systemProperties>
             </configuration>
           </plugin>
         </plugins>

@@ -1144,8 +1144,7 @@
                             docID: 'helpGuestNetworkZoneScope',
                             select: function(args) {
                               var array1 = [];															
-															if(args.context.zones[0].networktype == "Advanced" && args.context.zones[0].securitygroupsenabled	== true) {
-															  array1.push({id: 'account-specific', description: 'Account'});
+															if(args.context.zones[0].networktype == "Advanced" && args.context.zones[0].securitygroupsenabled	== true) {															  
 																array1.push({id: 'zone-wide', description: 'All'});
 															}
 															else {															
@@ -1312,38 +1311,31 @@
 															}
 
 															var networkOfferingArray = [];
+															
                               $.ajax({
                                 url: createURL(apiCmd + array1.join("")),
                                 dataType: "json",
                                 async: false,
-                                success: function(json) {
+                                success: function(json) {																  
                                   networkOfferingObjs = json.listnetworkofferingsresponse.networkoffering;
                                   if (networkOfferingObjs != null && networkOfferingObjs.length > 0) {
-                                    for (var i = 0; i < networkOfferingObjs.length; i++) {
-
-                                                  if(args.scope=="account-specific" && args.context.zones[0].securitygroupsenabled == true) { //BUG - CLOUDSTACK-1063
-                                                          var serviceObjArray = networkOfferingObjs[i].name;
-                                                          if(serviceObjArray == "DefaultSharedNetworkOfferingWithSGService"){
-                                                               continue;
-                                                              }
-                                                   }
-																			
-																			//comment out the following 12 lines because of CS-16718
-																			/*
-																			if(args.scope == "account-specific" || args.scope == "project-specific") { //if args.scope == "account-specific" or "project-specific", exclude Isolated network offerings with SourceNat service (bug 12869)
-																			  var includingSourceNat = false;
-                                        var serviceObjArray = networkOfferingObjs[i].service;
-                                        for(var k = 0; k < serviceObjArray.length; k++) {
-                                          if(serviceObjArray[k].name == "SourceNat") {
-                                            includingSourceNat = true;
-                                            break;
-                                          }
-                                        }
-                                        if(includingSourceNat == true)
-                                          continue; //skip to next network offering
+                                    for (var i = 0; i < networkOfferingObjs.length; i++) {    
+																			//for zone-wide network in Advanced SG-enabled zone, list only SG network offerings 
+																			if(args.context.zones[0].networktype == 'Advanced' && args.context.zones[0].securitygroupsenabled == true) {																		
+																				if(args.scope == "zone-wide") { 
+																					var includingSecurityGroup = false;
+																					var serviceObjArray = networkOfferingObjs[i].service;
+																					for(var k = 0; k < serviceObjArray.length; k++) {																					  
+																						if(serviceObjArray[k].name == "SecurityGroup") {
+																							includingSecurityGroup = true;
+																							break;
+																						}
+																					}
+																					if(includingSecurityGroup == false)
+																						continue; //skip to next network offering
+																				}
 																			}
-																			*/																			
-
+																			
                                       networkOfferingArray.push({id: networkOfferingObjs[i].id, description: networkOfferingObjs[i].displaytext});
                                     }
                                   }
@@ -3173,7 +3165,7 @@
                               alert("addNetworkServiceProvider&name=Netscaler failed. Error: " + errorMsg);
                             }
                           });
-                        }, 3000); 		
+                        }, g_queryAsyncJobResultInterval); 		
                       }
                     });
                   }
@@ -3414,7 +3406,7 @@
                               alert("addNetworkServiceProvider&name=F5BigIpfailed. Error: " + errorMsg);
                             }
                           });
-                        }, 3000); 		
+                        }, g_queryAsyncJobResultInterval); 		
                       }
                     });
                   }
@@ -3677,7 +3669,7 @@
                               alert("addNetworkServiceProvider&name=JuniperSRX failed. Error: " + errorMsg);
                             }
                           });
-                        }, 3000); 		
+                        }, g_queryAsyncJobResultInterval); 		
                       }
                     });
                   }
@@ -3996,7 +3988,7 @@
                               alert("addNetworkServiceProvider&name=NiciraNvp failed. Error: " + errorMsg);
                             }
                           });
-                        }, 3000);       
+                        }, g_queryAsyncJobResultInterval);       
                       }
                     });
                   }
@@ -6248,7 +6240,7 @@
                             alert("addNetworkServiceProvider&name=Netscaler failed. Error: " + errorMsg);
                           }
                         });
-                      }, 3000); 		
+                      }, g_queryAsyncJobResultInterval); 		
                     }
                   });
                 }
@@ -6443,7 +6435,7 @@
                             alert("addNetworkServiceProvider&name=F5BigIpfailed. Error: " + errorMsg);
                           }
                         });
-                      }, 3000); 		
+                      }, g_queryAsyncJobResultInterval); 		
                     }
                   });
                 }
@@ -6654,7 +6646,7 @@
                             alert("addNetworkServiceProvider&name=JuniperSRX failed. Error: " + errorMsg);
                           }
                         });
-                      }, 3000); 		
+                      }, g_queryAsyncJobResultInterval); 		
                     }
                   });
                 }
@@ -6820,7 +6812,7 @@
                               alert("addNetworkServiceProvider&name=NiciraNvp failed. Error: " + errorMsg);
                             }
                           });
-                        }, 3000);       
+                        }, g_queryAsyncJobResultInterval);       
                       }
                     });
                   }
@@ -10230,7 +10222,7 @@
 																														alert("updateNetworkServiceProvider failed. Error: " + errorMsg);
 																													}
 																												});
-																											}, 3000); 		
+																											}, g_queryAsyncJobResultInterval); 		
 																										}
 																									});
 																								}
@@ -10311,7 +10303,7 @@
 																					alert("updateNetworkServiceProvider failed. Error: " + errorMsg);
 																				}
 																			});
-																		}, 3000); 		
+																		}, g_queryAsyncJobResultInterval); 		
 																	}
 																});
 															}
@@ -10325,7 +10317,7 @@
 														alert("configureVirtualRouterElement failed. Error: " + errorMsg);
 													}
 												});
-											}, 3000); 		
+											}, g_queryAsyncJobResultInterval); 		
 										}
 									});
 								}
@@ -10339,7 +10331,7 @@
 							alert("updatePhysicalNetwork failed. Error: " + errorMsg);
 						}
 					});
-				}, 3000); 		
+				}, g_queryAsyncJobResultInterval); 		
 			}
 		});
 	};

@@ -14,33 +14,16 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-package com.cloud.vm;
+package com.cloud.agent.api;
 
 import java.util.List;
 
-/**
- * 
- * be an information carrier within one thread only.
- *
- */
-public class VirtualEnvironment {
-    /**
-     * The actual machine
-     */
-    public VirtualMachine machine;
-    
-    /**
-     * Disks to assign to the machine in order.
-     */
-    public List<VirtualDisk> disks;
-    
-    /**
-     * Networks to assign to the machine.
-     */
-    public List<VirtualNetwork> networks;
-    
-    /**
-     * Boot options to assign to the machine.
-     */
-    public String bootOptions;
+import com.cloud.agent.api.to.VolumeTO;
+
+public class RevertToVMSnapshotCommand extends VMSnapshotBaseCommand {
+
+    public RevertToVMSnapshotCommand(String vmName, VMSnapshotTO snapshot, List<VolumeTO> volumeTOs, String guestOSType) {
+        super(vmName, snapshot, volumeTOs, guestOSType);
+    }
+
 }
