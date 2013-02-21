@@ -14,29 +14,8 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-package com.cloud.resource;
-
-import com.cloud.storage.VolumeVO;
-import com.cloud.template.VirtualMachineTemplate.BootloaderType;
-import com.cloud.utils.component.Adapter;
-
-/**
- * DiskMounter mounts and unmounts disk for VMs
- * to consume.
- *
- */
-public interface DiskPreparer extends Adapter {
-    /**
-     * Mounts a volumeVO and returns a path.
-     * 
-     * @param vol
-     * @return
-     */
-    public String mount(String vmName, VolumeVO vol, BootloaderType type);
-    
-    /**
-     * Unmounts
-     */
-    public boolean unmount(String path);
-
-}
+(function($, cloudStack) {
+  cloudStack.plugins = [
+    // 'testPlugin'
+  ];
+}(jQuery, cloudStack));

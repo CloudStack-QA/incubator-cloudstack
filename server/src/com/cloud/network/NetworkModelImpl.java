@@ -75,6 +75,8 @@ import com.cloud.network.dao.PhysicalNetworkTrafficTypeDao;
 import com.cloud.network.dao.PhysicalNetworkTrafficTypeVO;
 import com.cloud.network.dao.PhysicalNetworkVO;
 import com.cloud.network.dao.UserIpv6AddressDao;
+import com.cloud.network.element.IpDeployer;
+import com.cloud.network.element.IpDeployingRequester;
 import com.cloud.network.element.NetworkElement;
 import com.cloud.network.element.UserDataServiceProvider;
 import com.cloud.network.rules.FirewallRule.Purpose;
@@ -390,9 +392,18 @@ public class NetworkModelImpl extends ManagerBase implements NetworkModel {
             throw new InvalidParameterException("There is no new provider for IP " + publicIp.getAddress() + " of service " + service.getName() + "!");
         }
         Provider newProvider = (Provider) newProviders.toArray()[0];
-        if (!oldProvider.equals(newProvider)) {
-            throw new InvalidParameterException("There would be multiple providers for IP " + publicIp.getAddress() + "!");
-        }
+        Network network = _networksDao.findById(networkId);
+        NetworkElement oldElement = getElementImplementingProvider(oldProvider.getName());
+        NetworkElement newElement = getElementImplementingProvider(newProvider.getName());
+        if (oldElement instanceof IpDeployingRequester && newElement instanceof IpDeployingRequester) {
+        	IpDeployer oldIpDeployer = ((IpDeployingRequester)oldElement).getIpDeployer(network);
+        	IpDeployer newIpDeployer = ((IpDeployingRequester)newElement).getIpDeployer(network);
+        	if (!oldIpDeployer.getProvider().getName().equals(newIpDeployer.getProvider().getName())) {
+        		throw new InvalidParameterException("There would be multiple providers for IP " + publicIp.getAddress() + "!");
+        	}
+        } else {
+        	throw new InvalidParameterException("Ip cannot be applied for new provider!");
+         }
         return true;
     }
     
@@ -1876,4 +1887,40 @@ public class NetworkModelImpl extends ManagerBase implements NetworkModel {
         return offering.isInline();
     }
 
+    @Override
+    public void checkIp6Parameters(String startIPv6, String endIPv6,
+            String ip6Gateway, String ip6Cidr) throws InvalidParameterValueException {
+        if (!NetUtils.isValidIpv6(startIPv6)) {
+            throw new InvalidParameterValueException("Invalid format for the startIPv6 parameter");
+        }
+        if (!NetUtils.isValidIpv6(endIPv6)) {
+            throw new InvalidParameterValueException("Invalid format for the endIPv6 parameter");
+        }
+
+        if (!(ip6Gateway != null && ip6Cidr != null)) {
+            throw new InvalidParameterValueException("ip6Gateway and ip6Cidr should be defined when startIPv6/endIPv6 are passed in");
+        }
+
+        if (!NetUtils.isValidIpv6(ip6Gateway)) {
+            throw new InvalidParameterValueException("Invalid ip6Gateway");
+        }
+        if (!NetUtils.isValidIp6Cidr(ip6Cidr)) {
+            throw new InvalidParameterValueException("Invalid ip6cidr");
+        }
+        if (!NetUtils.isIp6InNetwork(startIPv6, ip6Cidr)) {
+            throw new InvalidParameterValueException("startIPv6 is not in ip6cidr indicated network!");
+        }
+        if (!NetUtils.isIp6InNetwork(endIPv6, ip6Cidr)) {
+            throw new InvalidParameterValueException("endIPv6 is not in ip6cidr indicated network!");
+        }
+        if (!NetUtils.isIp6InNetwork(ip6Gateway, ip6Cidr)) {
+            throw new InvalidParameterValueException("ip6Gateway is not in ip6cidr indicated network!");
+        }
+
+        int cidrSize = NetUtils.getIp6CidrSize(ip6Cidr);
+        // Ipv6 cidr limit should be at least /64
+        if (cidrSize < 64) {
+            throw new InvalidParameterValueException("The cidr size of IPv6 network must be no less than 64 bits!");
+        }
+    }
 }

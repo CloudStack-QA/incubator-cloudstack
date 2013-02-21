@@ -14,16 +14,42 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-package com.cloud.resource;
+package com.cloud.bridge.service.core.ec2;
 
-import com.cloud.utils.component.Adapter;
+public class EC2AvailabilityZone {
 
-/**
- * Prepares the network for VM.
- */
-public interface NetworkPreparer extends Adapter {
-    
-    String setup(String vnet);
-    
-    void cleanup(String vnet);
+    private String   id;
+    private String   name;
+    private String   message;
+
+    public EC2AvailabilityZone() {
+        id      = null;
+        name    = null;
+        message = null;
+	}
+
+    public void setId( String id ) {
+        this.id = id;
+    }
+
+    public String getId() {
+        return this.id;
+    }
+
+    public void setName( String name ) {
+        this.name = name;
+    }
+
+    public String getName() {
+        return this.name;
+    }
+
+    public void setMessage( String message ) {
+        this.message = message;
+    }
+
+    public String getMessage() {
+        return this.message;
+    }
+
 }
