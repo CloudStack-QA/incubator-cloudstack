@@ -387,6 +387,7 @@ class deployDataCenters():
 
         self.testClient = \
         cloudstackTestClient.cloudstackTestClient(mgt.mgtSvrIp, mgt.port, \
+                                                  mgt.user, mgt.passwd, \
                                                   mgt.apiKey, \
                                                   mgt.securityKey, \
                                             logging=self.testClientLogger)
@@ -395,6 +396,7 @@ class deployDataCenters():
             self.testClient.close()
             self.testClient = \
             cloudstackTestClient.cloudstackTestClient(mgt.mgtSvrIp, 8080, \
+                                                      mgt.user, mgt.passwd, \
                                                       apiKey, securityKey, \
                                              logging=self.testClientLogger)
 
