@@ -27,10 +27,23 @@ class Services:
                                     "cpuspeed": 200,    # in MHz
                                     "memory": 256,      # In MBs
                         },
+                         "service_offering2": {
+                                    "name": "Med Instance",
+                                    "displaytext": "Med Instance",
+                                    "cpunumber": 1,
+                                    "cpuspeed": 1000,  # In MHz
+                                    "memory": 1024,    # In MBs
+                        },
                         "disk_offering": {
                                     "displaytext": "Small Disk",
                                     "name": "Small Disk",
                                     "disksize": 1,
+                                    "storagetype": "shared",
+                        },
+                         "disk_offering2": {
+                                    "displaytext": "Med Disk",
+                                    "name": "Med Disk",
+                                    "disksize": 5,
                                     "storagetype": "shared",
                         },
                          "server": {
@@ -48,6 +61,17 @@ class Services:
                                     "name": 'Template',
                                     "ostype": 'CentOS 5.3 (64-bit)',
                                     "templatefilter": 'self',
+                        },
+                         "win_template": {
+                                          "displaytext": 'windows2008R2',
+                                          "name": 'windows2008R2',
+                                          "ostype": 'Windows Server 2008 R2 (64-bit)',
+                                          "url": 'http://10.147.28.7/templates/Windows2008/Windows2008R2server64bit.vhd',
+                                          "hypervisor": 'XenServer',
+                                          "format": 'VHD',
+                                          "isfeatured": 'true',
+                                          "isextractable": 'true',
+                                          "ispublic": 'true',
                         },
                         "diskdevice": "/dev/xvda",
                         "diskname": "TestDiskServ",
@@ -83,7 +107,11 @@ class TestSnapshotOnRootVolume(cloudstackTestCase):
         #pdb.set_trace() 
         cls.service_offering = ServiceOffering.create(cls.api_client, cls.services["service_offering"])
         cls.disk_offering = DiskOffering.create(cls.api_client, cls.services["disk_offering"], domainid=cls.domain.id)
-        cls._cleanup = [cls.account, cls.service_offering, cls.disk_offering]
+        cls.service_offering2 = ServiceOffering.create(cls.api_client, cls.services["service_offering2"])
+        cls.disk_offering2 = DiskOffering.create(cls.api_client, cls.services["disk_offering2"], domainid=cls.domain.id)
+        
+        cls._cleanup = [cls.account, cls.service_offering, cls.disk_offering, cls.service_offering2, cls.disk_offering2]
+        
         
     @classmethod
     def tearDownClass(cls):
@@ -186,6 +214,75 @@ class TestSnapshotOnRootVolume(cloudstackTestCase):
         
         
         return
+    
+    def test_02_snapshot_on_winVM_rootVolume(self):
+        
+        """
+            Test create VM with windows template and create snapshot on root disk of the vm 
+        """
+        # Validate the following
+        #1.Deploy a VM using windows template, use medium service offering and disk offering
+        #2.Create snapshot on the root disk of this newly cteated vm
+        #3.listSnapshots should list the snapshot that was created.
+        #4.verify that secondary storage NFS share contains the reqd
+        # volume under /secondary/snapshots/$accountid/$volumeid/$snapshot_uuid
+        # 5. verify backup_snap_id was non null in the `snapshots` table
+        
+        #Register windows template
+        win_template = Template.register(self.apiclient,
+                                         self.services["win_template"], 
+                                         zoneid=self.zone.id, 
+                                         account=self.account.account.name, 
+                                         domainid=self.account.account.domainid,
+                                         )
+        self.cleanup.append(win_template)
+        #verify template download status
+        win_template.download(self.apiclient)
+        
+        template_response=Template.list(self.apiclient,
+                                        templatefilter="featured",
+                                        account=self.account.account.name, 
+                                        domainid=self.account.account.domainid,
+                                        name=self.services["win_template"]["name"],
+                                        )
+        template_id = template_response[0].id
+        #Create virtual machine with small systerm offering and disk offering
+        new_virtual_machine = VirtualMachine.create( self.apiclient, self.services["server"], 
+                                                     templateid=template_id, 
+                                                     zoneid=self.zone.id,
+                                                     accountid=self.account.account.name, 
+                                                     domainid=self.account.account.domainid,
+                                                     serviceofferingid=self.service_offering.id, 
+                                                     diskofferingid=self.disk_offering.id,
+                                                    )
+        self.cleanup.append(new_virtual_machine)
+        
+        list_volume_response = Volume.list(self.apiclient, 
+                                           virtualmachineid=new_virtual_machine.id, 
+                                           type="ROOT",
+                                           account=self.account.account.name, 
+                                           domainid=self.account.account.domainid,
+                                           )
+        
+        #Perform snapshot on the root volume
+        root_volume_snapshot = Snapshot.create(self.apiclient, 
+                                               volume_id=list_volume_response[0].id,
+                                               )
+        self.debug("Created snapshot: %s for vm: %s" % (root_volume_snapshot.id, new_virtual_machine.id))
+        list_snapshot_response = Snapshot.list(self.apiclient, 
+                                               id=root_volume_snapshot.id,
+                                               account=self.account.account.name, 
+                                               domainid=self.account.account.domainid,
+                                               )
+        self.assertEqual(isinstance(list_snapshot_response, list), True, "Check listSnapshots returns a valid list")
+        self.assertNotEqual(len(list_snapshot_response), 0, "Check listSnapshots response")
+        self.assertEqual(list_snapshot_response[0].volumeid, list_volume_response[0].id, "Snapshot volume id is not matching with the vm's volume id")
+        
+        self.cleanup.append(root_volume_snapshot)
+	
+	return
+
+    
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
