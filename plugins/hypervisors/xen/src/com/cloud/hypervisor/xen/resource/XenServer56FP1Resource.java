@@ -136,11 +136,16 @@ public class XenServer56FP1Resource extends XenServer56Resource {
         record.nameLabel = vmSpec.getName();
         record.actionsAfterCrash = Types.OnCrashBehaviour.DESTROY;
         record.actionsAfterShutdown = Types.OnNormalExit.DESTROY;
-        record.memoryDynamicMax = vmSpec.getMinRam();
+        record.memoryDynamicMax = vmSpec.getMaxRam();
         record.memoryDynamicMin = vmSpec.getMinRam();
-        record.memoryStaticMax = vmSpec.getMinRam();
-        record.memoryStaticMin = vmSpec.getMinRam();
-        record.VCPUsMax = (long) vmSpec.getCpus();
+        record.memoryStaticMax = 8589934592L; //128GB
+        record.memoryStaticMin = 134217728L; //128MB
+        if (guestOsTypeName.toLowerCase().contains("windows")) {
+            record.VCPUsMax = (long) vmSpec.getCpus();
+        } else {
+            record.VCPUsMax = 32L;
+        }
+
         record.VCPUsAtStartup = (long) vmSpec.getCpus();
         record.consoles.clear();
 
@@ -152,7 +157,7 @@ public class XenServer56FP1Resource extends XenServer56Resource {
 
         Map<String, String> vcpuParams = new HashMap<String, String>();
 
-        Integer speed = vmSpec.getSpeed();
+        Integer speed = vmSpec.getMinSpeed();
         if (speed != null) {
 
             int cpuWeight = _maxWeight; // cpu_weight

@@ -66,6 +66,7 @@ listVirtualMachines=15
 getVMPassword=15
 restoreVirtualMachine=15
 changeServiceForVirtualMachine=15
+scaleVirtualMachine=15
 assignVirtualMachine=1
 migrateVirtualMachine=1
 recoverVirtualMachine=7
@@ -326,6 +327,11 @@ addNicToVirtualMachine=15
 removeNicFromVirtualMachine=15
 updateDefaultNicForVirtualMachine=15
 
+####
+addIpToNic=15;
+removeIpFromNic=15;
+listNics=15;
+
 #### SSH key pair commands
 registerSSHKeyPair=15
 createSSHKeyPair=15
@@ -543,3 +549,6 @@ listVMSnapshot=15
 createVMSnapshot=15
 deleteVMSnapshot=15
 revertToSnapshot=15
+
+#### Baremetal commands
+addBaremetalHost=1

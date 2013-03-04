@@ -140,8 +140,19 @@ import com.cloud.utils.fsm.StateMachine2;
 import com.cloud.utils.net.Ip;
 import com.cloud.utils.net.NetUtils;
 import com.cloud.vm.*;
+import com.cloud.vm.Nic;
+import com.cloud.vm.NicProfile;
+import com.cloud.vm.NicSecondaryIp;
+import com.cloud.vm.NicVO;
+import com.cloud.vm.ReservationContext;
+import com.cloud.vm.ReservationContextImpl;
+import com.cloud.vm.UserVmVO;
+import com.cloud.vm.VMInstanceVO;
+import com.cloud.vm.VirtualMachine;
 import com.cloud.vm.VirtualMachine.Type;
 import com.cloud.vm.dao.NicDao;
+import com.cloud.vm.dao.NicSecondaryIpDao;
+import com.cloud.vm.dao.NicSecondaryIpVO;
 import com.cloud.vm.dao.UserVmDao;
 import com.cloud.vm.dao.VMInstanceDao;
 
@@ -240,6 +251,8 @@ public class NetworkManagerImpl extends ManagerBase implements NetworkManager, L
     UsageEventDao _usageEventDao;
     @Inject
     NetworkModel _networkModel;
+   @Inject
+    NicSecondaryIpDao _nicSecondaryIpDao;
     @Inject
     UserIpv6AddressDao _ipv6Dao;
     @Inject
@@ -355,9 +368,7 @@ public class NetworkManagerImpl extends ManagerBase implements NetworkManager, L
             _firewallMgr.addSystemFirewallRules(addr, owner);
         }
 
-        long macAddress = NetUtils.createSequenceBasedMacAddress(addr.getMacAddress());
-
-        return new PublicIp(addr, _vlanDao.findById(addr.getVlanId()), macAddress);
+        return PublicIp.createFromAddrAndVlan(addr, _vlanDao.findById(addr.getVlanId()));
     }
 
     @DB
@@ -404,8 +415,7 @@ public class NetworkManagerImpl extends ManagerBase implements NetworkManager, L
 
         PublicIp ipToReturn = null;
         if (sourceNatIp != null) {
-            ipToReturn = new PublicIp(sourceNatIp, _vlanDao.findById(sourceNatIp.getVlanId()),
-                    NetUtils.createSequenceBasedMacAddress(sourceNatIp.getMacAddress()));
+            ipToReturn = PublicIp.createFromAddrAndVlan(sourceNatIp, _vlanDao.findById(sourceNatIp.getVlanId()));
         } else {
             ipToReturn = assignDedicateIpAddress(owner, guestNetwork.getId(), null, dcId, true);
         }
@@ -490,8 +500,7 @@ public class NetworkManagerImpl extends ManagerBase implements NetworkManager, L
         List<PublicIp> publicIps = new ArrayList<PublicIp>();
         if (userIps != null && !userIps.isEmpty()) {
             for (IPAddressVO userIp : userIps) {
-                PublicIp publicIp = new PublicIp(userIp, _vlanDao.findById(userIp.getVlanId()),
-                        NetUtils.createSequenceBasedMacAddress(userIp.getMacAddress()));
+                PublicIp publicIp = PublicIp.createFromAddrAndVlan(userIp, _vlanDao.findById(userIp.getVlanId()));
                 publicIps.add(publicIp);
             }
         }
@@ -1517,7 +1526,7 @@ public class NetworkManagerImpl extends ManagerBase implements NetworkManager, L
             DeployDestination dest, ReservationContext context) throws InsufficientCapacityException,
             ConcurrentOperationException, ResourceUnavailableException {
         element.prepare(network, profile, vmProfile, dest, context);
-        if (vmProfile.getType() == Type.User && vmProfile.getHypervisorType() != HypervisorType.BareMetal && element.getProvider() != null) {
+        if (vmProfile.getType() == Type.User && element.getProvider() != null) {
             if (_networkModel.areServicesSupportedInNetwork(network.getId(), Service.Dhcp) &&
                     _networkModel.isProviderSupportServiceInNetwork(network.getId(), Service.Dhcp, element.getProvider()) &&
                     (element instanceof DhcpServiceProvider)) {
@@ -1754,6 +1763,14 @@ public class NetworkManagerImpl extends ManagerBase implements NetworkManager, L
         guru.deallocate(network, profile, vm);
         _nicDao.remove(nic.getId());
         s_logger.debug("Removed nic id=" + nic.getId());
+        //remove the secondary ip addresses corresponding to to this nic
+        List<NicSecondaryIpVO> secondaryIps = _nicSecondaryIpDao.listByNicId(nic.getId());
+        if (secondaryIps != null) {
+            for (NicSecondaryIpVO ip : secondaryIps) {
+                _nicSecondaryIpDao.remove(ip.getId());
+            }
+            s_logger.debug("Removed nic " + nic.getId() + " secondary ip addreses");
+        }
     }
 
     @Override
@@ -2311,7 +2328,7 @@ public class NetworkManagerImpl extends ManagerBase implements NetworkManager, L
             List<IPAddressVO> userIps = _ipAddressDao.listByAssociatedNetwork(network.getId(), null);
             if (userIps != null && !userIps.isEmpty()) {
                 for (IPAddressVO userIp : userIps) {
-    			PublicIp publicIp = new PublicIp(userIp, _vlanDao.findById(userIp.getVlanId()), NetUtils.createSequenceBasedMacAddress(userIp.getMacAddress()));
+    			PublicIp publicIp = PublicIp.createFromAddrAndVlan(userIp, _vlanDao.findById(userIp.getVlanId()));
     			publicIps.add(publicIp);
 	                }
              }
@@ -2796,6 +2813,33 @@ public class NetworkManagerImpl extends ManagerBase implements NetworkManager, L
 
     Random _rand = new Random(System.currentTimeMillis());
 
+    public List<? extends Nic> listVmNics(Long vmId, Long nicId) {
+        List<NicVO> result = null;
+        if (nicId == null) {
+            result = _nicDao.listByVmId(vmId);
+        } else {
+            result = _nicDao.listByVmIdAndNicId(vmId, nicId);
+        }
+        return result;
+    }
+
+    public String allocateGuestIP(Account ipOwner, boolean isSystem, long zoneId, Long networkId, String requestedIp)
+    throws InsufficientAddressCapacityException {
+        String ipaddr = null;
+        Account caller = UserContext.current().getCaller();
+        long callerUserId = UserContext.current().getCallerUserId();
+        // check permissions
+        DataCenter zone = _configMgr.getZone(zoneId);
+        Network network = _networksDao.findById(networkId);
+
+        _accountMgr.checkAccess(caller, null, false, network);
+
+        //return acquireGuestIpAddress(network, requestedIp);
+        ipaddr = acquireGuestIpAddress(network, requestedIp);
+        return ipaddr;
+    }
+
+
     @Override
     @DB
     public String acquireGuestIpAddress(Network network, String requestedIp) {
@@ -2806,7 +2850,7 @@ public class NetworkManagerImpl extends ManagerBase implements NetworkManager, L
 
         Set<Long> availableIps = _networkModel.getAvailableIps(network, requestedIp);
 
-        if (availableIps.isEmpty()) {
+        if (availableIps == null || availableIps.isEmpty()) {
             return null;
         }
 
@@ -2847,7 +2891,7 @@ public class NetworkManagerImpl extends ManagerBase implements NetworkManager, L
         List<PublicIp> publicIps = new ArrayList<PublicIp>();
         if (userIps != null && !userIps.isEmpty()) {
             for (IPAddressVO userIp : userIps) {
-                PublicIp publicIp = new PublicIp(userIp, _vlanDao.findById(userIp.getVlanId()), NetUtils.createSequenceBasedMacAddress(userIp.getMacAddress()));
+                PublicIp publicIp = PublicIp.createFromAddrAndVlan(userIp, _vlanDao.findById(userIp.getVlanId()));
                 publicIps.add(publicIp);
             }
         }
@@ -2877,7 +2921,7 @@ public class NetworkManagerImpl extends ManagerBase implements NetworkManager, L
                         IPAddressVO ip = _ipAddressDao.findByIdIncludingRemoved(staticNat.getSourceIpAddressId());
                         // ip can't be null, otherwise something wrong happened
                         ip.setAssociatedWithVmId(null);
-                        publicIp = new PublicIp(ip, _vlanDao.findById(ip.getVlanId()), NetUtils.createSequenceBasedMacAddress(ip.getMacAddress()));
+                        publicIp = PublicIp.createFromAddrAndVlan(ip, _vlanDao.findById(ip.getVlanId()));
                         publicIps.add(publicIp);
                         break;
                     }
@@ -3036,9 +3080,9 @@ public class NetworkManagerImpl extends ManagerBase implements NetworkManager, L
                 throw new InvalidParameterValueException("Source ip address of the rule id=" + firewallStaticNatRule.getId() + " is not static nat enabled");
             }
 
-            String dstIp = _networkModel.getIpInNetwork(ip.getAssociatedWithVmId(), firewallStaticNatRule.getNetworkId());
+            //String dstIp = _networkModel.getIpInNetwork(ip.getAssociatedWithVmId(), firewallStaticNatRule.getNetworkId());
             ruleVO.setState(FirewallRule.State.Revoke);
-            staticNatRules.add(new StaticNatRuleImpl(ruleVO, dstIp));
+            staticNatRules.add(new StaticNatRuleImpl(ruleVO, ip.getVmIp()));
         }
 
         try {
@@ -3070,7 +3114,7 @@ public class NetworkManagerImpl extends ManagerBase implements NetworkManager, L
         }
 
         try {
-            if (!_lbMgr.applyRules(network, Purpose.LoadBalancing, lbs)) {
+            if (!_lbMgr.applyRules(network, Purpose.LoadBalancing, lbRules)) {
                 s_logger.warn("Failed to cleanup lb rules as a part of shutdownNetworkRules");
                 success = false;
             }
@@ -3154,7 +3198,7 @@ public class NetworkManagerImpl extends ManagerBase implements NetworkManager, L
         if (userIps != null && !userIps.isEmpty()) {
             for (IPAddressVO userIp : userIps) {
                 userIp.setState(State.Releasing);
-                PublicIp publicIp = new PublicIp(userIp, _vlanDao.findById(userIp.getVlanId()), NetUtils.createSequenceBasedMacAddress(userIp.getMacAddress()));
+                PublicIp publicIp = PublicIp.createFromAddrAndVlan(userIp, _vlanDao.findById(userIp.getVlanId()));
                 publicIpsToRelease.add(publicIp);
             }
         }
@@ -3405,6 +3449,8 @@ public class NetworkManagerImpl extends ManagerBase implements NetworkManager, L
     			nic.setReservationId(String.valueOf(ip.getVlanTag()));
     			nic.setMacAddress(ip.getMacAddress());
     		}
+    		nic.setDns1(dc.getDns1());
+    		nic.setDns2(dc.getDns2());
     	}
     	
     	if (network.getIp6Gateway() != null) {
@@ -3426,10 +3472,10 @@ public class NetworkManagerImpl extends ManagerBase implements NetworkManager, L
     				nic.setMacAddress(ip.getMacAddress());
     			}
     		}
+    		nic.setIp6Dns1(dc.getIp6Dns1());
+    		nic.setIp6Dns2(dc.getIp6Dns2());
     	}
 
-        nic.setDns1(dc.getDns1());
-        nic.setDns2(dc.getDns2());
     }
 
 	@Override
@@ -3600,4 +3646,26 @@ public class NetworkManagerImpl extends ManagerBase implements NetworkManager, L
         }
         return rules.size();
     }
+
+         @Override
+    public boolean isSecondaryIpSetForNic(long nicId) {
+        NicVO nic = _nicDao.findById(nicId);
+        return nic.getSecondaryIp();
+    }
+
+        @Override
+        public boolean removeVmSecondaryIps(long vmId) {
+           Transaction txn = Transaction.currentTxn();
+           txn.start();
+           List <NicSecondaryIpVO> ipList = _nicSecondaryIpDao.listByVmId(vmId);
+           if (ipList != null) {
+               for (NicSecondaryIpVO ip: ipList) {
+                   _nicSecondaryIpDao.remove(ip.getId());
+               }
+               s_logger.debug("Revoving nic secondary ip entry ...");
+           }
+           txn.commit();
+           return true;
+        }
+
 }

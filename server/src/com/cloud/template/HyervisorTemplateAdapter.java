@@ -22,12 +22,22 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 import javax.ejb.Local;
 import javax.inject.Inject;
 
 import org.apache.cloudstack.api.command.user.iso.DeleteIsoCmd;
 import org.apache.cloudstack.api.command.user.iso.RegisterIsoCmd;
+import org.apache.cloudstack.api.command.user.template.DeleteTemplateCmd;
+import org.apache.cloudstack.api.command.user.template.RegisterTemplateCmd;
+import org.apache.cloudstack.engine.subsystem.api.storage.CommandResult;
+import org.apache.cloudstack.engine.subsystem.api.storage.DataStore;
+import org.apache.cloudstack.engine.subsystem.api.storage.DataStoreManager;
+import org.apache.cloudstack.engine.subsystem.api.storage.DataStoreRole;
+import org.apache.cloudstack.engine.subsystem.api.storage.ImageDataFactory;
+import org.apache.cloudstack.engine.subsystem.api.storage.ImageService;
+import org.apache.cloudstack.framework.async.AsyncCallFuture;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Component;
 
@@ -43,9 +53,9 @@ import com.cloud.exception.ResourceAllocationException;
 import com.cloud.host.HostVO;
 import com.cloud.storage.Storage.ImageFormat;
 import com.cloud.storage.Storage.TemplateType;
+import com.cloud.storage.TemplateProfile;
 import com.cloud.storage.VMTemplateHostVO;
 import com.cloud.storage.VMTemplateStorageResourceAssoc.Status;
-import com.cloud.storage.TemplateProfile;
 import com.cloud.storage.VMTemplateVO;
 import com.cloud.storage.VMTemplateZoneVO;
 import com.cloud.storage.download.DownloadMonitor;
@@ -53,6 +63,8 @@ import com.cloud.storage.secondary.SecondaryStorageVmManager;
 import com.cloud.user.Account;
 import com.cloud.utils.db.DB;
 import com.cloud.utils.exception.CloudRuntimeException;
+import com.cloud.vm.UserVmVO;
+
 import org.apache.cloudstack.api.command.user.iso.DeleteIsoCmd;
 import org.apache.cloudstack.api.command.user.iso.RegisterIsoCmd;
 import org.apache.cloudstack.api.command.user.template.DeleteTemplateCmd;
@@ -70,6 +82,11 @@ public class HyervisorTemplateAdapter extends TemplateAdapterBase implements Tem
 	@Inject DownloadMonitor _downloadMonitor;
 	@Inject SecondaryStorageVmManager _ssvmMgr;
 	@Inject AgentManager _agentMgr;
+
+    @Inject DataStoreManager storeMgr;
+    @Inject ImageService imageService;
+    @Inject ImageDataFactory imageFactory;
+    @Inject TemplateManager templateMgr;
 
     @Override
     public String getName() {
@@ -155,7 +172,18 @@ public class HyervisorTemplateAdapter extends TemplateAdapterBase implements Tem
 			throw new CloudRuntimeException("Unable to persist the template " + profile.getTemplate());
 		}
 		
-		_downloadMonitor.downloadTemplateToStorage(template, profile.getZoneId());
+		DataStore imageStore = this.storeMgr.getDataStore(profile.getImageStoreId(), DataStoreRole.Image);
+		
+		AsyncCallFuture<CommandResult> future = this.imageService.createTemplateAsync(this.imageFactory.getTemplate(template.getId()), imageStore);
+		try {
+            future.get();
+        } catch (InterruptedException e) {
+            s_logger.debug("create template Failed", e);
+            throw new CloudRuntimeException("create template Failed", e);
+        } catch (ExecutionException e) {
+            s_logger.debug("create template Failed", e);
+            throw new CloudRuntimeException("create template Failed", e);
+        }
 		_resourceLimitMgr.incrementResourceCount(profile.getAccountId(), ResourceType.template);
 		
         return template;
@@ -221,17 +249,21 @@ public class HyervisorTemplateAdapter extends TemplateAdapterBase implements Tem
                     templateHostVO.setDestroyed(true);
 					_tmpltHostDao.update(templateHostVO.getId(), templateHostVO);
                     String installPath = templateHostVO.getInstallPath();
-                    if (installPath != null) {
-                        Answer answer = _agentMgr.sendToSecStorage(secondaryStorageHost, new DeleteTemplateCommand(secondaryStorageHost.getStorageUrl(), installPath));
+                    List<UserVmVO> userVmUsingIso = _userVmDao.listByIsoId(templateId);
+                    //check if there is any VM using this ISO.
+                    if (userVmUsingIso == null || userVmUsingIso.isEmpty()) {
+                        if (installPath != null) {
+                            Answer answer = _agentMgr.sendToSecStorage(secondaryStorageHost, new DeleteTemplateCommand(secondaryStorageHost.getStorageUrl(), installPath));
 
-                        if (answer == null || !answer.getResult()) {
-                            s_logger.debug("Failed to delete " + templateHostVO + " due to " + ((answer == null) ? "answer is null" : answer.getDetails()));
+                            if (answer == null || !answer.getResult()) {
+                                s_logger.debug("Failed to delete " + templateHostVO + " due to " + ((answer == null) ? "answer is null" : answer.getDetails()));
+                            } else {
+                                _tmpltHostDao.remove(templateHostVO.getId());
+                                s_logger.debug("Deleted template at: " + installPath);
+                            }
                         } else {
                             _tmpltHostDao.remove(templateHostVO.getId());
-                            s_logger.debug("Deleted template at: " + installPath);
                         }
-                    } else {
-                        _tmpltHostDao.remove(templateHostVO.getId());
                     }
 					VMTemplateZoneVO templateZone = _tmpltZoneDao.findByZoneTemplate(sZoneId, templateId);
 					

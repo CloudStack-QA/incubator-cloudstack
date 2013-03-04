@@ -31,7 +31,8 @@ whatami=cloudstack-agent
 SHORTNAME="$whatami"
 PIDFILE=/var/run/"$whatami".pid
 LOCKFILE=/var/lock/subsys/"$SHORTNAME"
-LOGFILE=/var/log/cloudstack/agent/agent.log
+LOGDIR=/var/log/cloudstack/agent
+LOGFILE=${LOGDIR}/agent.log
 PROGNAME="Cloud Agent"
 CLASS="com.cloud.agent.AgentShell"
 JSVC=`which jsvc 2>/dev/null`;
@@ -57,8 +58,8 @@ export JAVA_HOME
 
 SCP=""
 DCP=""
-ACP=`ls /usr/share/cloudstack-agent/cloud-plugin-hypervisor-kvm-*.jar`":"`ls /usr/share/cloudstack-agent/lib/* | tr '\n' ':'`
-JCP="/usr/share/java/jna.jar:/usr/share/java/commons-daemon.jar"
+ACP=`ls /usr/share/cloudstack-agent/cloud-plugin-hypervisor-kvm-*.jar`":"`ls /usr/share/cloudstack-agent/lib/* | tr '\n' ':' | sed s'/.$//'`
+JCP="/usr/share/java/commons-daemon.jar"
 
 # We need to append the JSVC daemon JAR to the classpath
 # AgentShell implements the JSVC daemon methods
@@ -67,7 +68,8 @@ export CLASSPATH="$SCP:$DCP:$ACP:$JCP:/etc/cloudstack/agent:/usr/share/cloudstac
 start() {
         echo -n $"Starting $PROGNAME: "
 	if hostname --fqdn >/dev/null 2>&1 ; then
-		$JSVC -cp "$CLASSPATH" -pidfile "$PIDFILE" $CLASS
+		$JSVC -cp "$CLASSPATH" -pidfile "$PIDFILE" \
+		    -errfile $LOGDIR/cloudstack-agent.err -outfile $LOGDIR/cloudstack-agent.out $CLASS
 		RETVAL=$?
 		echo
 	else

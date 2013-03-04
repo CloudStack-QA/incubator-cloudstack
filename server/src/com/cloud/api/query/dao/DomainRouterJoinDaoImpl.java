@@ -68,7 +68,7 @@ public class DomainRouterJoinDaoImpl extends GenericDaoBase<DomainRouterJoinVO, 
         DomainRouterResponse routerResponse = new DomainRouterResponse();
         routerResponse.setId(router.getUuid());
         routerResponse.setZoneId(router.getDataCenterUuid());
-        routerResponse.setName(router.getHostName());
+        routerResponse.setName(router.getName());
         routerResponse.setTemplateId(router.getTemplateUuid());
         routerResponse.setCreated(router.getCreated());
         routerResponse.setState(router.getState());
@@ -116,6 +116,9 @@ public class DomainRouterJoinDaoImpl extends GenericDaoBase<DomainRouterJoinVO, 
                 nicResponse.setNetworkid(router.getNetworkUuid());
                 nicResponse.setNetworkName(router.getNetworkName());
                 nicResponse.setMacAddress(router.getMacAddress());
+                nicResponse.setIp6Address(router.getIp6Address());
+                nicResponse.setIp6Gateway(router.getIp6Gateway());
+                nicResponse.setIp6Cidr(router.getIp6Cidr());
                 if (router.getBroadcastUri() != null) {
                     nicResponse.setBroadcastUri(router.getBroadcastUri().toString());
                 }
@@ -148,6 +151,9 @@ public class DomainRouterJoinDaoImpl extends GenericDaoBase<DomainRouterJoinVO, 
         routerResponse.setDns1(router.getDns1());
         routerResponse.setDns2(router.getDns2());
 
+        routerResponse.setIp6Dns1(router.getIp6Dns1());
+        routerResponse.setIp6Dns2(router.getIp6Dns2());
+
         routerResponse.setVpcId(router.getVpcUuid());
 
         // set async job
@@ -171,6 +177,9 @@ public class DomainRouterJoinDaoImpl extends GenericDaoBase<DomainRouterJoinVO, 
             nicResponse.setNetmask(vr.getNetmask());
             nicResponse.setNetworkid(vr.getNetworkUuid());
             nicResponse.setMacAddress(vr.getMacAddress());
+            nicResponse.setIp6Address(vr.getIp6Address());
+            nicResponse.setIp6Gateway(vr.getIp6Gateway());
+            nicResponse.setIp6Cidr(vr.getIp6Cidr());
             if (vr.getBroadcastUri() != null) {
                 nicResponse.setBroadcastUri(vr.getBroadcastUri().toString());
             }

@@ -20,6 +20,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.Map;
 
+
 import com.cloud.agent.api.to.NicTO;
 import com.cloud.agent.api.to.VirtualMachineTO;
 import com.cloud.deploy.DeployDestination;
@@ -184,5 +185,17 @@ public interface VirtualMachineManager extends Manager {
      * @return
      */
     VirtualMachineTO toVmTO(VirtualMachineProfile<? extends VMInstanceVO> profile);
+
+
+    VMInstanceVO reConfigureVm(VMInstanceVO vm, ServiceOffering newServiceOffering, boolean sameHost)
+            throws ResourceUnavailableException, ConcurrentOperationException;
+
+    VMInstanceVO scale(VirtualMachine.Type vmType, VMInstanceVO vm, Long newSvcOfferingId) throws InsufficientCapacityException,
+            ConcurrentOperationException, ResourceUnavailableException,
+            VirtualMachineMigrationException, ManagementServerException;
+
+    <T extends VMInstanceVO> T migrateForScale(T vm, long srcHostId, DeployDestination dest, Long newSvcOfferingId)
+            throws ResourceUnavailableException, ConcurrentOperationException,
+            ManagementServerException, VirtualMachineMigrationException;
 
 }

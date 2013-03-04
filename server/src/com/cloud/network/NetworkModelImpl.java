@@ -109,6 +109,7 @@ import com.cloud.vm.VMInstanceVO;
 import com.cloud.vm.VirtualMachine;
 import com.cloud.vm.VirtualMachine.Type;
 import com.cloud.vm.dao.NicDao;
+import com.cloud.vm.dao.NicSecondaryIpDao;
 import com.cloud.vm.dao.VMInstanceDao;
 
 @Component
@@ -170,6 +171,8 @@ public class NetworkModelImpl extends ManagerBase implements NetworkModel {
     PrivateIpDao _privateIpDao;
     @Inject
     UserIpv6AddressDao _ipv6Dao;
+    @Inject
+    NicSecondaryIpDao _nicSecondaryIpDao;;
 
 
     private final HashMap<String, NetworkOfferingVO> _systemNetworks = new HashMap<String, NetworkOfferingVO>(5);
@@ -568,6 +571,9 @@ public class NetworkModelImpl extends ManagerBase implements NetworkModel {
     @Override
     public boolean isIP6AddressAvailableInVlan(long vlanId) {
     	VlanVO vlan = _vlanDao.findById(vlanId);
+    	if (vlan.getIp6Range() == null) {
+    		return false;
+    	}
     	long existedCount = _ipv6Dao.countExistedIpsInVlan(vlanId);
     	BigInteger existedInt = BigInteger.valueOf(existedCount);
     	BigInteger rangeInt = NetUtils.countIp6InRange(vlan.getIp6Range());
@@ -706,7 +712,7 @@ public class NetworkModelImpl extends ManagerBase implements NetworkModel {
             return null;
         }
     
-        return new PublicIp(addr, _vlanDao.findById(addr.getVlanId()), NetUtils.createSequenceBasedMacAddress(addr.getMacAddress()));
+        return PublicIp.createFromAddrAndVlan(addr, _vlanDao.findById(addr.getVlanId()));
     }
 
     @Override
@@ -1402,7 +1408,7 @@ public class NetworkModelImpl extends ManagerBase implements NetworkModel {
             return true;
         }
         IPAddressVO ipVO = _ipAddressDao.findById(userIp.getId());
-        PublicIp publicIp = new PublicIp(ipVO, _vlanDao.findById(userIp.getVlanId()), NetUtils.createSequenceBasedMacAddress(ipVO.getMacAddress()));
+        PublicIp publicIp = PublicIp.createFromAddrAndVlan(ipVO, _vlanDao.findById(userIp.getVlanId()));
         if (!canIpUsedForService(publicIp, service, networkId)) {
             return false;
         }
@@ -1621,6 +1627,8 @@ public class NetworkModelImpl extends ManagerBase implements NetworkModel {
     public Set<Long> getAvailableIps(Network network, String requestedIp) {
         String[] cidr = network.getCidr().split("/");
         List<String> ips = _nicDao.listIpAddressInNetwork(network.getId());
+        List<String> secondaryIps = _nicSecondaryIpDao.listSecondaryIpAddressInNetwork(network.getId());
+        ips.addAll(secondaryIps);
         Set<Long> allPossibleIps = NetUtils.getAllIpsFromCidr(cidr[0], Integer.parseInt(cidr[1]));
         Set<Long> usedIps = new TreeSet<Long>(); 
         
@@ -1762,17 +1770,26 @@ public class NetworkModelImpl extends ManagerBase implements NetworkModel {
 
     @Override
     public boolean networkIsConfiguredForExternalNetworking(long zoneId, long networkId) {
-        boolean netscalerInNetwork = isProviderForNetwork(Network.Provider.Netscaler, networkId);
-        boolean juniperInNetwork = isProviderForNetwork(Network.Provider.JuniperSRX, networkId);
-        boolean f5InNetwork = isProviderForNetwork(Network.Provider.F5BigIp, networkId);
-    
-        if (netscalerInNetwork || juniperInNetwork || f5InNetwork) {
-            return true;
-        } else {
-            return false;
+        List<Provider> networkProviders = getNetworkProviders(networkId);
+       for(Provider provider : networkProviders){
+           if(provider.isExternal()){
+               return true;
+           }
         }
+       return false;
     }
 
+    private List<Provider> getNetworkProviders(long networkId) {
+        List<String> providerNames = _ntwkSrvcDao.getDistinctProviders(networkId);
+        Map<String, Provider> providers = new HashMap<String, Provider>();
+        for (String providerName : providerNames) {
+           if(!providers.containsKey(providerName)){
+               providers.put(providerName, Network.Provider.getProvider(providerName));
+           }
+        }
+
+       return new ArrayList<Provider>(providers.values());
+    }
 
     @Override
     public boolean configure(String name, Map<String, Object> params) throws ConfigurationException {
@@ -1872,8 +1889,7 @@ public class NetworkModelImpl extends ManagerBase implements NetworkModel {
             for (IpAddress addr : addrs) {
                 if (addr.isSourceNat()) {
                     sourceNatIp = _ipAddressDao.findById(addr.getId());
-                    return new PublicIp(sourceNatIp, _vlanDao.findById(sourceNatIp.getVlanId()), 
-                            NetUtils.createSequenceBasedMacAddress(sourceNatIp.getMacAddress()));
+                    return PublicIp.createFromAddrAndVlan(sourceNatIp, _vlanDao.findById(sourceNatIp.getVlanId()));
                 }
             }
     
@@ -1918,9 +1934,41 @@ public class NetworkModelImpl extends ManagerBase implements NetworkModel {
         }
 
         int cidrSize = NetUtils.getIp6CidrSize(ip6Cidr);
-        // Ipv6 cidr limit should be at least /64
-        if (cidrSize < 64) {
-            throw new InvalidParameterValueException("The cidr size of IPv6 network must be no less than 64 bits!");
+        // we only support cidr == 64
+        if (cidrSize != 64) {
+            throw new InvalidParameterValueException("The cidr size of IPv6 network must be 64 bits!");
+        }
+    }
+
+    @Override
+    public void checkRequestedIpAddresses(long networkId, String ip4, String ip6) throws InvalidParameterValueException {
+        if (ip4 != null) {
+            if (!NetUtils.isValidIp(ip4)) {
+                throw new InvalidParameterValueException("Invalid specified IPv4 address " + ip4);
+            }
+            //Other checks for ipv4 are done in assignPublicIpAddress()
+        }
+        if (ip6 != null) {
+            if (!NetUtils.isValidIpv6(ip6)) {
+                throw new InvalidParameterValueException("Invalid specified IPv6 address " + ip6);
+            }
+            if (_ipv6Dao.findByNetworkIdAndIp(networkId, ip6) != null) {
+                throw new InvalidParameterValueException("The requested IP is already taken!");
+            }
+            List<VlanVO> vlans = _vlanDao.listVlansByNetworkId(networkId);
+            if (vlans == null) {
+                throw new CloudRuntimeException("Cannot find related vlan attached to network " + networkId);
+            }
+            Vlan ipVlan = null;
+            for (Vlan vlan : vlans) {
+                if (NetUtils.isIp6InRange(ip6, vlan.getIp6Range())) {
+                    ipVlan = vlan;
+                    break;
+                }
+            }
+            if (ipVlan == null) {
+                throw new InvalidParameterValueException("Requested IPv6 is not in the predefined range!");
+            }
         }
     }
 }

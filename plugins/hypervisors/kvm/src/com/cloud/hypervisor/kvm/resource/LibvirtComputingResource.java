@@ -698,10 +698,7 @@ ServerResource {
 
         _sysvmISOPath = (String) params.get("systemvm.iso.path");
         if (_sysvmISOPath == null) {
-            String[] isoPaths = { "/usr/lib64/cloud/agent/vms/systemvm.iso",
-                    "/usr/lib/cloud/agent/vms/systemvm.iso",
-                    "/usr/lib64/cloud/common/vms/systemvm.iso",
-            "/usr/lib/cloud/common/vms/systemvm.iso" };
+            String[] isoPaths = {"/usr/share/cloudstack-common/vms/systemvm.iso"};
             for (String isoPath : isoPaths) {
                 if (_storage.exists(isoPath)) {
                     _sysvmISOPath = isoPath;
@@ -2924,12 +2921,34 @@ ServerResource {
         vm.addComp(guest);
 
         GuestResourceDef grd = new GuestResourceDef();
-        grd.setMemorySize(vmTO.getMinRam() / 1024);
+
+        if (vmTO.getMinRam() != vmTO.getMaxRam()){
+            grd.setMemBalloning(true);
+            grd.setCurrentMem((int)vmTO.getMinRam()/1024);
+            grd.setMemorySize((int)vmTO.getMaxRam()/1024);
+        }
+        else{
+            grd.setMemorySize(vmTO.getMaxRam() / 1024);
+        }
         grd.setVcpuNum(vmTO.getCpus());
         vm.addComp(grd);
 
         CpuTuneDef ctd = new CpuTuneDef();
-        ctd.setShares(vmTO.getCpus() * vmTO.getSpeed());
+        /**
+            A 4.0.X/4.1.X management server doesn't send the correct JSON
+            command for getMinSpeed, it only sends a 'speed' field.
+
+            So if getMinSpeed() returns null we fall back to getSpeed().
+
+            This way a >4.1 agent can work communicate a <=4.1 management server
+
+            This change is due to the overcommit feature in 4.2
+        */
+        if (vmTO.getMinSpeed() != null) {
+            ctd.setShares(vmTO.getCpus() * vmTO.getMinSpeed());
+        } else {
+            ctd.setShares(vmTO.getCpus() * vmTO.getSpeed());
+        }
         vm.addComp(ctd);
 
         FeaturesDef features = new FeaturesDef();

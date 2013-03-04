@@ -20,8 +20,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.cloudstack.engine.subsystem.api.storage.ScopeType;
+import org.apache.cloudstack.storage.datastore.db.StoragePoolVO;
+
 import com.cloud.storage.StoragePoolStatus;
-import com.cloud.storage.StoragePoolVO;
 import com.cloud.utils.db.GenericDao;
 /**
  * Data Access Object for storage_pool table
@@ -36,7 +38,7 @@ public interface StoragePoolDao extends GenericDao<StoragePoolVO, Long> {
 	/**
 	 * @param datacenterId -- the id of the datacenter (availability zone)
 	 */
-	List<StoragePoolVO> listBy(long datacenterId, long podId, Long clusterId);
+	List<StoragePoolVO> listBy(long datacenterId, long podId, Long clusterId, ScopeType scope);
     
 	/**
 	 * Set capacity of storage pool in bytes
@@ -70,9 +72,9 @@ public interface StoragePoolDao extends GenericDao<StoragePoolVO, Long> {
      * @param details details to match.  All must match for the pool to be returned.
      * @return List of StoragePoolVO
      */
-    List<StoragePoolVO> findPoolsByDetails(long dcId, long podId, Long clusterId, Map<String, String> details);
+    List<StoragePoolVO> findPoolsByDetails(long dcId, long podId, Long clusterId, Map<String, String> details, ScopeType scope);
     
-    List<StoragePoolVO> findPoolsByTags(long dcId, long podId, Long clusterId, String[] tags, Boolean shared);
+    List<StoragePoolVO> findPoolsByTags(long dcId, long podId, Long clusterId, String[] tags);
     
     /**
      * Find pool by UUID.
@@ -103,4 +105,9 @@ public interface StoragePoolDao extends GenericDao<StoragePoolVO, Long> {
 	List<StoragePoolVO> listByStatusInZone(long dcId, StoragePoolStatus status);
     
     List<StoragePoolVO> listPoolsByCluster(long clusterId);
+
+	List<StoragePoolVO> findLocalStoragePoolsByTags(long dcId, long podId,
+			Long clusterId, String[] tags);
+
+	List<StoragePoolVO> findZoneWideStoragePoolsByTags(long dcId, String[] tags);
 }

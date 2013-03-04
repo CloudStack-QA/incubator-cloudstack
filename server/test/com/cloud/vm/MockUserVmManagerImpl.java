@@ -25,23 +25,9 @@ import javax.naming.ConfigurationException;
 
 import org.apache.cloudstack.api.command.admin.vm.AssignVMCmd;
 import org.apache.cloudstack.api.command.admin.vm.RecoverVMCmd;
-import org.apache.cloudstack.api.command.user.template.CreateTemplateCmd;
-import org.apache.cloudstack.api.command.user.vm.AddNicToVMCmd;
-import org.apache.cloudstack.api.command.user.vm.DeployVMCmd;
-import org.apache.cloudstack.api.command.user.vm.DestroyVMCmd;
-import org.apache.cloudstack.api.command.user.vm.RebootVMCmd;
-import org.apache.cloudstack.api.command.user.vm.RemoveNicFromVMCmd;
-import org.apache.cloudstack.api.command.user.vm.ResetVMPasswordCmd;
-import org.apache.cloudstack.api.command.user.vm.ResetVMSSHKeyCmd;
-import org.apache.cloudstack.api.command.user.vm.RestoreVMCmd;
-import org.apache.cloudstack.api.command.user.vm.StartVMCmd;
-import org.apache.cloudstack.api.command.user.vm.UpdateDefaultNicForVMCmd;
-import org.apache.cloudstack.api.command.user.vm.UpdateVMCmd;
-import org.apache.cloudstack.api.command.user.vm.UpgradeVMCmd;
+import org.apache.cloudstack.api.command.user.vm.*;
 import org.apache.cloudstack.api.command.user.vmgroup.CreateVMGroupCmd;
 import org.apache.cloudstack.api.command.user.vmgroup.DeleteVMGroupCmd;
-import org.apache.cloudstack.api.command.user.volume.AttachVolumeCmd;
-import org.apache.cloudstack.api.command.user.volume.DetachVolumeCmd;
 import org.springframework.stereotype.Component;
 
 import com.cloud.agent.api.StopAnswer;
@@ -69,7 +55,6 @@ import com.cloud.offering.ServiceOffering;
 import com.cloud.projects.Project.ListProjectResourcesCriteria;
 import com.cloud.server.Criteria;
 import com.cloud.storage.StoragePool;
-import com.cloud.storage.Volume;
 import com.cloud.template.VirtualMachineTemplate;
 import com.cloud.user.Account;
 import com.cloud.uservm.UserVm;
@@ -155,11 +140,6 @@ public class MockUserVmManagerImpl extends ManagerBase implements UserVmManager,
         return null;
     }
 
-    @Override
-    public boolean attachISOToVM(long vmId, long isoId, boolean attach) {
-        // TODO Auto-generated method stub
-        return false;
-    }
 
     @Override
     public boolean stopVirtualMachine(long userId, long vmId) {
@@ -210,12 +190,6 @@ public class MockUserVmManagerImpl extends ManagerBase implements UserVmManager,
     }
 
     @Override
-    public String getChecksum(Long hostId, String templatePath) {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
     public boolean configure(String name, Map<String, Object> params) throws ConfigurationException {
         return true;
     }
@@ -251,24 +225,6 @@ public class MockUserVmManagerImpl extends ManagerBase implements UserVmManager,
 
     @Override
     public UserVm resetVMPassword(ResetVMPasswordCmd cmd, String password) throws ResourceUnavailableException, InsufficientCapacityException {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public UserVm resetVMSSHKey(ResetVMSSHKeyCmd cmd) throws ResourceUnavailableException, InsufficientCapacityException {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public Volume attachVolumeToVM(AttachVolumeCmd cmd) {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public Volume detachVolumeFromVM(DetachVolumeCmd cmmd) {
         // TODO Auto-generated method stub
         return null;
     }
@@ -312,18 +268,6 @@ public class MockUserVmManagerImpl extends ManagerBase implements UserVmManager,
 
     @Override
     public UserVm recoverVirtualMachine(RecoverVMCmd cmd) throws ResourceAllocationException {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public VirtualMachineTemplate createPrivateTemplateRecord(CreateTemplateCmd cmd, Account templateOwner) throws ResourceAllocationException {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public VirtualMachineTemplate createPrivateTemplate(CreateTemplateCmd cmd) {
         // TODO Auto-generated method stub
         return null;
     }
@@ -436,6 +380,10 @@ public class MockUserVmManagerImpl extends ManagerBase implements UserVmManager,
         return null;
     }
 
+    @Override
+    public UserVm upgradeVirtualMachine(ScaleVMCmd scaleVMCmd) throws ResourceUnavailableException, ConcurrentOperationException, ManagementServerException, VirtualMachineMigrationException {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    }
 
 
     @Override
@@ -469,4 +417,9 @@ public class MockUserVmManagerImpl extends ManagerBase implements UserVmManager,
         return false;
     }
 
+    @Override
+    public UserVm resetVMSSHKey(ResetVMSSHKeyCmd cmd) throws ResourceUnavailableException, InsufficientCapacityException {
+        // TODO Auto-generated method stub
+        return null;
+    }
 }
