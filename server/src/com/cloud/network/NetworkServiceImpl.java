@@ -113,6 +113,7 @@ import com.cloud.utils.AnnotationHelper;
 import com.cloud.utils.Journal;
 import com.cloud.utils.NumbersUtil;
 import com.cloud.utils.Pair;
+import com.cloud.utils.component.ComponentContext;
 import com.cloud.utils.component.Manager;
 import com.cloud.utils.component.ManagerBase;
 import com.cloud.utils.db.*;
@@ -516,8 +517,45 @@ public class NetworkServiceImpl extends ManagerBase implements  NetworkService {
             } catch (InsufficientAddressCapacityException e) {
                 throw new InvalidParameterValueException("Allocating guest ip for nic failed");
             }
+        } else if (dc.getNetworkType() == NetworkType.Basic) {
+            Account caller = UserContext.current().getCaller();
+            long callerUserId = UserContext.current().getCallerUserId();
+            _accountMgr.checkAccess(caller, AccessType.UseNetwork, false, network);
+            //handle the basic networks here
+            VirtualMachine vm = _userVmDao.findById(nicVO.getInstanceId());
+            if (vm == null) {
+                throw new InvalidParameterValueException("There is no vm with the nic");
+            }
+            VMInstanceVO vmi = (VMInstanceVO)vm;
+            Long podId = vmi.getPodIdToDeployIn();
+            if (podId == null) {
+                throw new InvalidParameterValueException("vm pod id is null");
+            }
+            Pod pod = _hostPodDao.findById(podId);
+            if (pod == null) {
+                throw new InvalidParameterValueException("vm pod is null");
+            }
+
+            try {
+                ipaddr = _networkMgr.allocatePublicIpForGuestNic(networkId, dc, pod, caller, requestedIp);
+                if (ipaddr == null) {
+                    throw new InvalidParameterValueException("Allocating ip to guest nic " + nicId + " failed");
+                }
+            } catch (InsufficientAddressCapacityException e) {
+                s_logger.error("Allocating ip to guest nic " + nicId + " failed");
+                return null;
+            }
+        } else if (isSharedNetworkOfferingWithServices(network.getNetworkOfferingId()) && zone.getNetworkType() == NetworkType.Advanced) {
+            // if shared network in the advanced zone, then check the caller against the network for 'AccessType.UseNetwork'
+            Account caller = UserContext.current().getCaller();
+            long callerUserId = UserContext.current().getCallerUserId();
+            _accountMgr.checkAccess(caller, AccessType.UseNetwork, false, network);
+            if (s_logger.isDebugEnabled()) {
+                s_logger.debug("Associate IP address called by the user " + callerUserId + " account " + ipOwner.getId());
+            }
         } else {
-            throw new InvalidParameterValueException("AddIpToVMNic is not supported in this network...");
+            s_logger.error("AddIpToVMNic is not supported in this network...");
+            return null;
         }
 
         if (ipaddr != null) {
@@ -548,18 +586,18 @@ public class NetworkServiceImpl extends ManagerBase implements  NetworkService {
         boolean success = false;
 
         // Verify input parameters
-        NicSecondaryIpVO ipVO= _nicSecondaryIpDao.findById(ipAddressId);
-        if (ipVO == null) {
+        NicSecondaryIpVO secIpVO= _nicSecondaryIpDao.findById(ipAddressId);
+        if (secIpVO == null) {
             throw new InvalidParameterValueException("Unable to find ip address by id");
         }
 
-        Network network = _networksDao.findById(ipVO.getNetworkId());
+        Network network = _networksDao.findById(secIpVO.getNetworkId());
 
         // verify permissions
         _accountMgr.checkAccess(caller, null, true, network);
 
-        Long nicId = ipVO.getNicId();
-        s_logger.debug("ip id and nic id" + ipAddressId + "..." + nicId);
+        Long nicId = secIpVO.getNicId();
+        s_logger.debug("ip id = " + ipAddressId + " nic id = " + nicId);
         //check is this the last secondary ip for NIC
         List<NicSecondaryIpVO> ipList = _nicSecondaryIpDao.listByNicId(nicId);
         boolean lastIp = false;
@@ -567,20 +605,41 @@ public class NetworkServiceImpl extends ManagerBase implements  NetworkService {
             // this is the last secondary ip to nic
             lastIp = true;
         }
-        //check PF or static NAT is configured on this ip address
-        String secondaryIp = ipVO.getIp4Address();
-        List<PortForwardingRuleVO> pfRuleList = _portForwardingDao.listByDestIpAddr(secondaryIp);
-        if (pfRuleList.size() != 0) {
-            s_logger.debug("VM nic IP " + secondaryIp + " is associated with the port forwarding rule");
-            throw new InvalidParameterValueException("Can't remove the secondary ip " + secondaryIp + " is associate with the port forwarding rule");
+
+        DataCenter dc = _dcDao.findById(network.getDataCenterId());
+        if (dc == null) {
+            throw new InvalidParameterValueException("Invalid zone Id is given");
         }
-        //check if the secondary ip associated with any static nat rule
-        IPAddressVO publicIpVO = _ipAddressDao.findByVmIp(secondaryIp);
-        if (publicIpVO != null) {
-            s_logger.debug("VM nic IP " + secondaryIp + " is associated with the static NAT rule public IP address id " + publicIpVO.getId());
-            throw new InvalidParameterValueException("Can' remove the ip " + secondaryIp + "is associate with static NAT rule public IP address id " + publicIpVO.getId());
+
+        s_logger.debug("Calling the ip allocation ...");
+        if (dc.getNetworkType() == NetworkType.Advanced && network.getGuestType() == Network.GuestType.Isolated) {
+            //check PF or static NAT is configured on this ip address
+            String secondaryIp = secIpVO.getIp4Address();
+            List<PortForwardingRuleVO> pfRuleList = _portForwardingDao.listByDestIpAddr(secondaryIp);
+            if (pfRuleList.size() != 0) {
+                s_logger.debug("VM nic IP " + secondaryIp + " is associated with the port forwarding rule");
+                throw new InvalidParameterValueException("Can't remove the secondary ip " + secondaryIp + " is associate with the port forwarding rule");
+            }
+            //check if the secondary ip associated with any static nat rule
+            IPAddressVO publicIpVO = _ipAddressDao.findByVmIp(secondaryIp);
+            if (publicIpVO != null) {
+                s_logger.debug("VM nic IP " + secondaryIp + " is associated with the static NAT rule public IP address id " + publicIpVO.getId());
+                throw new InvalidParameterValueException("Can' remove the ip " + secondaryIp + "is associate with static NAT rule public IP address id " + publicIpVO.getId());
+            }
+        } else if (dc.getNetworkType() == NetworkType.Basic) {
+            IPAddressVO ip = _ipAddressDao.findByIpAndNetworkId(secIpVO.getNetworkId(), secIpVO.getIp4Address());
+            if (ip != null) {
+                Transaction txn = Transaction.currentTxn();
+                txn.start();
+                _networkMgr.markIpAsUnavailable(ip.getId());
+                _ipAddressDao.unassignIpAddress(ip.getId());
+                txn.commit();
+            }
+        } else if (isSharedNetworkOfferingWithServices(network.getNetworkOfferingId()) && dc.getNetworkType() == NetworkType.Advanced) {
+            throw new InvalidParameterValueException("Not supported for this network now");
         }
-        success = removeNicSecondaryIP(ipVO, lastIp);
+
+        success = removeNicSecondaryIP(secIpVO, lastIp);
         return success;
     }
 
@@ -2175,9 +2234,6 @@ public class NetworkServiceImpl extends ManagerBase implements  NetworkService {
             
             // add VPCVirtualRouter as the defualt network service provider
             addDefaultVpcVirtualRouterToPhysicalNetwork(pNetwork.getId());
-            
-            // add baremetal pxe/dhcp provider to the physical network
-            addDefaultBaremetalProvidersToPhysicalNetwork(pNetwork.getId());
 
             txn.commit();
             return pNetwork;
@@ -2978,36 +3034,28 @@ public class NetworkServiceImpl extends ManagerBase implements  NetworkService {
 
         PhysicalNetworkServiceProvider nsp = addProviderToPhysicalNetwork(physicalNetworkId, Network.Provider.VirtualRouter.getName(), null, null);
         // add instance of the provider
-        VirtualRouterElement element = (VirtualRouterElement) _networkModel.getElementImplementingProvider(Network.Provider.VirtualRouter.getName());
-        if (element == null) {
+        NetworkElement networkElement = _networkModel.getElementImplementingProvider(Network.Provider.VirtualRouter.getName());
+        if (networkElement == null) {
             throw new CloudRuntimeException("Unable to find the Network Element implementing the VirtualRouter Provider");
         }
+        
+        VirtualRouterElement element = (VirtualRouterElement)networkElement;
         element.addElement(nsp.getId(), VirtualRouterProviderType.VirtualRouter);
 
         return nsp;
-    }
-    
-    
-    private PhysicalNetworkServiceProvider addDefaultBaremetalProvidersToPhysicalNetwork(long physicalNetworkId) {
-        PhysicalNetworkVO pvo = _physicalNetworkDao.findById(physicalNetworkId);
-        DataCenterVO dvo = _dcDao.findById(pvo.getDataCenterId());
-        if (dvo.getNetworkType() == NetworkType.Basic) {
-            addProviderToPhysicalNetwork(physicalNetworkId, "BaremetalDhcpProvider", null, null);
-            addProviderToPhysicalNetwork(physicalNetworkId, "BaremetalPxeProvider", null, null);
-            addProviderToPhysicalNetwork(physicalNetworkId, "BaremetaUserdataProvider", null, null);
-        }
-        return null;
     }
     
     protected PhysicalNetworkServiceProvider addDefaultVpcVirtualRouterToPhysicalNetwork(long physicalNetworkId) {
 
         PhysicalNetworkServiceProvider nsp = addProviderToPhysicalNetwork(physicalNetworkId, 
                 Network.Provider.VPCVirtualRouter.getName(), null, null);
-        // add instance of the provider
-        VpcVirtualRouterElement element = (VpcVirtualRouterElement) _networkModel.getElementImplementingProvider(Network.Provider.VPCVirtualRouter.getName());
-        if (element == null) {
+ 
+        NetworkElement networkElement =  _networkModel.getElementImplementingProvider(Network.Provider.VPCVirtualRouter.getName());
+        if (networkElement == null) {
             throw new CloudRuntimeException("Unable to find the Network Element implementing the VPCVirtualRouter Provider");
         }
+        
+        VpcVirtualRouterElement element = (VpcVirtualRouterElement)networkElement;
         element.addElement(nsp.getId(), VirtualRouterProviderType.VPCVirtualRouter);
 
         return nsp;

@@ -27,6 +27,7 @@ UPDATE `cloud`.`hypervisor_capabilities` SET `max_hosts_per_cluster`=32 WHERE `h
 INSERT IGNORE INTO `cloud`.`hypervisor_capabilities`(hypervisor_type, hypervisor_version, max_guests_limit, security_group_enabled, max_hosts_per_cluster) VALUES ('VMware', '5.1', 128, 0, 32);
 DELETE FROM `cloud`.`configuration` where name='vmware.percluster.host.max';
 INSERT IGNORE INTO `cloud`.`configuration` VALUES ('Advanced', 'DEFAULT', 'AgentManager', 'xen.nics.max', '7', 'Maximum allowed nics for Vms created on Xen');
+ALTER TABLE `cloud`.`load_balancer_vm_map` ADD state VARCHAR(40) NULL COMMENT 'service status updated by LB healthcheck manager';
 
 alter table template_host_ref add state varchar(255);
 alter table template_host_ref add update_count bigint unsigned;
@@ -97,9 +98,31 @@ CREATE TABLE  `vpc_service_map` (
   UNIQUE (`vpc_id`, `service`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+CREATE TABLE `cloud`.`load_balancer_healthcheck_policies` (
+ `id` bigint(20) NOT NULL auto_increment,
+  `uuid` varchar(40),
+  `load_balancer_id` bigint unsigned NOT NULL,
+  `pingpath` varchar(225) NULL DEFAULT '/',
+  `description` varchar(4096)  NULL,
+  `response_time` int(11) DEFAULT 5,
+  `healthcheck_interval` int(11) DEFAULT 5,
+  `healthcheck_thresshold` int(11) DEFAULT 2,
+  `unhealth_thresshold` int(11) DEFAULT 10,
+  `revoke` tinyint(1) unsigned NOT NULL DEFAULT 0 COMMENT '1 is when rule is set for Revoke',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `id_UNIQUE` (`id`),
+  CONSTRAINT `fk_load_balancer_healthcheck_policies_loadbalancer_id` FOREIGN KEY(`load_balancer_id`) REFERENCES `load_balancing_rules`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
 INSERT IGNORE INTO `cloud`.`configuration` VALUES ('Advanced', 'DEFAULT', 'management-server', 'vm.instancename.flag', 'false', 'Append guest VM display Name (if set) to the internal name of the VM');
+
+INSERT INTO `cloud`.`guest_os` (id, uuid, category_id, display_name) VALUES (208, UUID(), 6, 'Windows 8');
+INSERT INTO `cloud`.`guest_os` (id, uuid, category_id, display_name) VALUES (209, UUID(), 6, 'Windows 8 (64 bit)');
+INSERT INTO `cloud`.`guest_os` (id, uuid, category_id, display_name) VALUES (210, UUID(), 6, 'Windows 8 Server (64 bit)');
+INSERT INTO `cloud`.`guest_os_hypervisor` (hypervisor_type, guest_os_name, guest_os_id) VALUES ("VmWare", 'Windows 8', 208);
+INSERT INTO `cloud`.`guest_os_hypervisor` (hypervisor_type, guest_os_name, guest_os_id) VALUES ("VmWare", 'Windows 8 (64 bit)', 209);
+INSERT INTO `cloud`.`guest_os_hypervisor` (hypervisor_type, guest_os_name, guest_os_id) VALUES ("VmWare", 'Windows 8 Server (64 bit)', 210);
 
 CREATE TABLE `cloud`.`user_vm_clone_setting` (
   `vm_id` bigint unsigned NOT NULL COMMENT 'guest VM id',
@@ -133,3 +156,48 @@ CREATE TABLE nic_secondary_ips (
 
 ALTER TABLE `cloud`.`nics` ADD COLUMN secondary_ip SMALLINT DEFAULT '0' COMMENT 'secondary ips configured for the nic';
 ALTER TABLE `cloud`.`user_ip_address` ADD COLUMN dnat_vmip VARCHAR(40);
+
+ALTER TABLE `cloud`.`alert` ADD COLUMN `archived` tinyint(1) unsigned NOT NULL DEFAULT 0;
+ALTER TABLE `cloud`.`event` ADD COLUMN `archived` tinyint(1) unsigned NOT NULL DEFAULT 0;
+INSERT IGNORE INTO `cloud`.`configuration` VALUES ('Advanced', 'DEFAULT', 'management-server', 'alert.purge.interval', '86400', 'The interval (in seconds) to wait before running the alert purge thread');
+INSERT IGNORE INTO `cloud`.`configuration` VALUES ('Advanced', 'DEFAULT', 'management-server', 'alert.purge.delay', '0', 'Alerts older than specified number days will be purged. Set this value to 0 to never delete alerts');
+
+DROP VIEW IF EXISTS `cloud`.`event_view`;
+CREATE VIEW `cloud`.`event_view` AS
+    select
+        event.id,
+        event.uuid,
+        event.type,
+        event.state,
+        event.description,
+        event.created,
+        event.level,
+        event.parameters,
+        event.start_id,
+        eve.uuid start_uuid,
+        event.user_id,
+        event.archived,
+        user.username user_name,
+        account.id account_id,
+        account.uuid account_uuid,
+        account.account_name account_name,
+        account.type account_type,
+        domain.id domain_id,
+        domain.uuid domain_uuid,
+        domain.name domain_name,
+        domain.path domain_path,
+        projects.id project_id,
+        projects.uuid project_uuid,
+        projects.name project_name
+    from
+        `cloud`.`event`
+            inner join
+        `cloud`.`account` ON event.account_id = account.id
+            inner join
+        `cloud`.`domain` ON event.domain_id = domain.id
+            inner join
+        `cloud`.`user` ON event.user_id = user.id
+            left join
+        `cloud`.`projects` ON projects.project_account_id = event.account_id
+            left join
+        `cloud`.`event` eve ON event.start_id = eve.id;

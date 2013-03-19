@@ -66,34 +66,30 @@ public class AccountVO implements Account {
     @Column(name="default_zone_id")
     private Long defaultZoneId = null;
 
-    @Column(name="region_id")
-    private int regionId;
-
     public AccountVO() {
-        this.uuid = UUID.randomUUID().toString();
+    	this.uuid = UUID.randomUUID().toString();
     }
 
     public AccountVO(long id) {
         this.id = id;
-        this.uuid = UUID.randomUUID().toString();
+    	this.uuid = UUID.randomUUID().toString();
     }
-
-    public AccountVO(String accountName, long domainId, String networkDomain, short type, int regionId) {
+    
+    public AccountVO(String accountName, long domainId, String networkDomain, short type, String uuid) {
         this.accountName = accountName;
         this.domainId = domainId;
         this.networkDomain = networkDomain;
         this.type = type;
         this.state = State.enabled;
-        this.uuid = UUID.randomUUID().toString();
-        this.regionId = regionId;
+        this.uuid = uuid;
     }
 
     public void setNeedsCleanup(boolean value) {
-        needsCleanup = value;
+    	needsCleanup = value;
     }
 
     public boolean getNeedsCleanup() {
-        return needsCleanup;
+    	return needsCleanup;
     }
 
     @Override
@@ -102,10 +98,10 @@ public class AccountVO implements Account {
     }
 
     public void setId(long id) {
-        this.id = id;
-    }
+		this.id = id;
+	}
 
-    @Override
+	@Override
     public String getAccountName() {
         return accountName;
     }
@@ -134,11 +130,11 @@ public class AccountVO implements Account {
 
     @Override
     public Long getDefaultZoneId() {
-        return defaultZoneId;
+    	return defaultZoneId;
     }
 
     public void setDefaultZoneId(Long defaultZoneId) {
-        this.defaultZoneId = defaultZoneId;
+    	this.defaultZoneId = defaultZoneId;
     }
 
     @Override
@@ -176,14 +172,11 @@ public class AccountVO implements Account {
 
     @Override
     public String getUuid() {
-        return this.uuid;
+    	return this.uuid;
     }
 
     public void setUuid(String uuid) {
-        this.uuid = uuid;
+    	this.uuid = uuid;
     }
 
-    public int getRegionId() {
-        return regionId;
-    }
 }

@@ -32,16 +32,27 @@ import javax.ejb.Local;
 import javax.inject.Inject;
 import javax.naming.ConfigurationException;
 
-import com.cloud.api.ApiDBUtils;
 import org.apache.cloudstack.acl.ControlledEntity.ACLType;
 import org.apache.cloudstack.acl.SecurityChecker.AccessType;
 import org.apache.cloudstack.api.command.admin.vm.AssignVMCmd;
 import org.apache.cloudstack.api.command.admin.vm.RecoverVMCmd;
-import org.apache.cloudstack.api.command.user.vm.*;
+import org.apache.cloudstack.api.command.user.vm.AddNicToVMCmd;
+import org.apache.cloudstack.api.command.user.vm.DeployVMCmd;
+import org.apache.cloudstack.api.command.user.vm.DestroyVMCmd;
+import org.apache.cloudstack.api.command.user.vm.RebootVMCmd;
+import org.apache.cloudstack.api.command.user.vm.RemoveNicFromVMCmd;
+import org.apache.cloudstack.api.command.user.vm.ResetVMPasswordCmd;
+import org.apache.cloudstack.api.command.user.vm.ResetVMSSHKeyCmd;
+import org.apache.cloudstack.api.command.user.vm.RestoreVMCmd;
+import org.apache.cloudstack.api.command.user.vm.StartVMCmd;
+import org.apache.cloudstack.api.command.user.vm.UpdateDefaultNicForVMCmd;
+import org.apache.cloudstack.api.command.user.vm.UpdateVMCmd;
+import org.apache.cloudstack.api.command.user.vm.UpgradeVMCmd;
 import org.apache.cloudstack.api.command.user.vmgroup.CreateVMGroupCmd;
 import org.apache.cloudstack.api.command.user.vmgroup.DeleteVMGroupCmd;
 import org.apache.cloudstack.engine.cloud.entity.api.VirtualMachineEntity;
 import org.apache.cloudstack.engine.service.api.OrchestrationService;
+import org.apache.cloudstack.storage.datastore.db.PrimaryDataStoreDao;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.log4j.Logger;
 
@@ -170,7 +181,6 @@ import com.cloud.storage.dao.DiskOfferingDao;
 import com.cloud.storage.dao.GuestOSCategoryDao;
 import com.cloud.storage.dao.GuestOSDao;
 import com.cloud.storage.dao.SnapshotDao;
-import com.cloud.storage.dao.StoragePoolDao;
 import com.cloud.storage.dao.VMTemplateDao;
 import com.cloud.storage.dao.VMTemplateDetailsDao;
 import com.cloud.storage.dao.VMTemplateHostDao;
@@ -307,7 +317,7 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Use
     @Inject
     protected ClusterDao _clusterDao;
     @Inject
-    protected StoragePoolDao _storagePoolDao;
+    protected PrimaryDataStoreDao _storagePoolDao;
     @Inject
     protected SecurityGroupManager _securityGroupMgr;
     @Inject
@@ -387,7 +397,6 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Use
     protected String _instance;
     protected String _zone;
     protected boolean _instanceNameFlag;
-    protected int _scaleRetry;
 
     @Inject ConfigurationDao _configDao;
     private int _createprivatetemplatefromvolumewait;
@@ -741,7 +750,7 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Use
     /*
      * TODO: cleanup eventually - Refactored API call
      */
-    public UserVm upgradeVirtualMachine(UpgradeVMCmd cmd) {
+    public UserVm upgradeVirtualMachine(UpgradeVMCmd cmd) throws ResourceAllocationException {
         Long vmId = cmd.getId();
         Long svcOffId = cmd.getServiceOfferingId();
         Account caller = UserContext.current().getCaller();
@@ -754,6 +763,24 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Use
         }
 
         _accountMgr.checkAccess(caller, null, true, vmInstance);
+
+        // Check resource limits for CPU and Memory.
+        ServiceOfferingVO newServiceOffering = _offeringDao.findById(svcOffId);
+        ServiceOfferingVO currentServiceOffering = _offeringDao.findByIdIncludingRemoved(vmInstance.getServiceOfferingId());
+
+        int newCpu = newServiceOffering.getCpu();
+        int newMemory = newServiceOffering.getRamSize();
+        int currentCpu = currentServiceOffering.getCpu();
+        int currentMemory = currentServiceOffering.getRamSize();
+
+        if (newCpu > currentCpu) {
+            _resourceLimitMgr.checkResourceLimit(caller, ResourceType.cpu,
+                    newCpu - currentCpu);
+        }
+        if (newMemory > currentMemory) {
+            _resourceLimitMgr.checkResourceLimit(caller, ResourceType.memory,
+                    newMemory - currentMemory);
+        }
 
         // Check that the specified service offering ID is valid
         _itMgr.checkIfCanUpgrade(vmInstance, svcOffId);
@@ -772,6 +799,18 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Use
         }*/
 
         _itMgr.upgradeVmDb(vmId, svcOffId);
+
+        // Increment or decrement CPU and Memory count accordingly.
+        if (newCpu > currentCpu) {
+            _resourceLimitMgr.incrementResourceCount(caller.getAccountId(), ResourceType.cpu, new Long (newCpu - currentCpu));
+        } else if (currentCpu > newCpu) {
+            _resourceLimitMgr.decrementResourceCount(caller.getAccountId(), ResourceType.cpu, new Long (currentCpu - newCpu));
+        }
+        if (newMemory > currentMemory) {
+            _resourceLimitMgr.incrementResourceCount(caller.getAccountId(), ResourceType.memory, new Long (newMemory - currentMemory));
+        } else if (currentMemory > newMemory) {
+            _resourceLimitMgr.decrementResourceCount(caller.getAccountId(), ResourceType.memory, new Long (currentMemory - newMemory));
+        }
 
         return _vmDao.findById(vmInstance.getId());
     }
@@ -1009,74 +1048,6 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Use
     }
 
     @Override
-    @ActionEvent(eventType = EventTypes.EVENT_VM_SCALE, eventDescription = "scaling Vm")
-    public UserVm upgradeVirtualMachine(ScaleVMCmd cmd) throws InvalidParameterValueException {
-        Long vmId = cmd.getId();
-        Long newSvcOffId = cmd.getServiceOfferingId();
-        Account caller = UserContext.current().getCaller();
-
-        // Verify input parameters
-        VMInstanceVO vmInstance = _vmInstanceDao.findById(vmId);
-        if(vmInstance.getHypervisorType() != HypervisorType.XenServer){
-            throw new InvalidParameterValueException("This operation not permitted for this hypervisor of the vm");
-        }
-
-        _accountMgr.checkAccess(caller, null, true, vmInstance);
-
-        // Check that the specified service offering ID is valid
-        _itMgr.checkIfCanUpgrade(vmInstance, newSvcOffId);
-
-        //Check if its a scale up
-        ServiceOffering newServiceOffering = _configMgr.getServiceOffering(newSvcOffId);
-        ServiceOffering oldServiceOffering = _configMgr.getServiceOffering(vmInstance.getServiceOfferingId());
-        if(newServiceOffering.getSpeed() <= oldServiceOffering.getSpeed()
-                && newServiceOffering.getRamSize() <= oldServiceOffering.getRamSize()){
-            throw new InvalidParameterValueException("Only scaling up the vm is supported");
-        }
-
-        // Dynamically upgrade the running vms
-        if(vmInstance.getState().equals(State.Running)){
-            boolean success = false;
-            int retry = _scaleRetry;
-            while (retry-- != 0) { // It's != so that it can match -1.
-                try{
-                    // #1 Check existing host has capacity
-                    boolean existingHostHasCapacity = _capacityMgr.checkIfHostHasCapacity(vmInstance.getHostId(), newServiceOffering.getSpeed() - oldServiceOffering.getSpeed(),
-                            (newServiceOffering.getRamSize() - oldServiceOffering.getRamSize()) * 1024L * 1024L, false, ApiDBUtils.getCpuOverprovisioningFactor(), 1f,  false);
-
-                    // #2 migrate the vm
-                    if (!existingHostHasCapacity){
-                        vmInstance = _itMgr.scale(vmInstance.getType(), vmInstance, newSvcOffId);
-                    }else{
-                        vmInstance.setSameHost(existingHostHasCapacity);
-                    }
-
-                    // #3 scale the vm now
-                    vmInstance = _itMgr.reConfigureVm(vmInstance, newServiceOffering, existingHostHasCapacity);
-                    success = true;
-                }catch(InsufficientCapacityException e ){
-
-                } catch (ResourceUnavailableException e) {
-                    e.printStackTrace();
-                } catch (ConcurrentOperationException e) {
-                    e.printStackTrace();
-                } catch (VirtualMachineMigrationException e) {
-                    e.printStackTrace();
-                } catch (ManagementServerException e) {
-                    e.printStackTrace();
-                }
-            }
-            if (!success)
-                return null;
-        }
-
-        //Update the DB.
-        _itMgr.upgradeVmDb(vmId, newSvcOffId);
-
-        return _vmDao.findById(vmInstance.getId());
-    }
-
-    @Override
     public HashMap<Long, VmStatsEntry> getVirtualMachineStatistics(long hostId,
             String hostName, List<Long> vmIds) throws CloudRuntimeException {
         HashMap<Long, VmStatsEntry> vmStatsById = new HashMap<Long, VmStatsEntry>();
@@ -1269,7 +1240,6 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Use
                 new UserVmStateListener(_usageEventDao, _networkDao, _nicDao));
 
         value = _configDao.getValue(Config.SetVmInternalNameUsingDisplayName.key());
-
         if(value == null) {
             _instanceNameFlag = false;
         }
@@ -1277,8 +1247,6 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Use
         {
             _instanceNameFlag = Boolean.parseBoolean(value);
         }
-
-       _scaleRetry = NumbersUtil.parseInt(configs.get(Config.ScaleRetry.key()), 2);
 
         s_logger.info("User VM Manager is configured.");
 
@@ -1421,13 +1389,6 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Use
             s_logger.warn("Failed to disable static nat for ip address " + ip
                     + " as a part of vm id=" + vmId
                     + " expunge because resource is unavailable", e);
-        }
-        //remove vm secondary ip addresses
-        if (_networkMgr.removeVmSecondaryIps(vmId)) {
-            s_logger.debug("Removed vm " + vmId + " secondary ip address of the VM Nics as a part of expunge process");
-        } else {
-            success = false;
-            s_logger.warn("Fail to remove secondary ip address  of vm " + vmId + " Nics as a part of expunge process");
         }
 
         return success;

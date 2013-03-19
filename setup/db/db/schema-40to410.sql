@@ -241,6 +241,7 @@ UPDATE `cloud`.`volumes` set uuid=id WHERE uuid is NULL;
 -- UPDATE `cloud`.`conditions` set uuid=id WHERE uuid is NULL;
 
 INSERT IGNORE INTO `cloud`.`configuration` VALUES ('Advanced', 'DEFAULT', 'management-server', 'detail.batch.query.size', '2000', 'Default entity detail batch query size for listing');
+INSERT IGNORE INTO `cloud`.`configuration` VALUES ('Advanced', 'DEFAULT', 'management-server', 'api.throttling.enabled', 'false', 'Enable/Disable Api rate limit');
 INSERT IGNORE INTO `cloud`.`configuration` VALUES ('Advanced', 'DEFAULT', 'management-server', 'api.throttling.interval', '1', 'Time interval (in seconds) to reset API count');
 INSERT IGNORE INTO `cloud`.`configuration` VALUES ('Advanced', 'DEFAULT', 'management-server', 'api.throttling.max', '25', 'Max allowed number of APIs within fixed interval');
 INSERT IGNORE INTO `cloud`.`configuration` VALUES ('Advanced', 'DEFAULT', 'management-server', 'api.throttling.cachesize', '50000', 'Account based API count cache size');
@@ -251,20 +252,16 @@ ALTER TABLE `cloud`.`op_dc_vnet_alloc` DROP INDEX i_op_dc_vnet_alloc__vnet__data
 
 ALTER TABLE `cloud`.`op_dc_vnet_alloc` ADD CONSTRAINT UNIQUE `i_op_dc_vnet_alloc__vnet__data_center_id`(`vnet`, `physical_network_id`, `data_center_id`);
 
+ALTER TABLE `cloud`.`op_dc_vnet_alloc` DROP INDEX i_op_dc_vnet_alloc__vnet__data_center_id__account_id;
+
 CREATE TABLE  `cloud`.`region` (
   `id` int unsigned NOT NULL UNIQUE,
   `name` varchar(255) NOT NULL UNIQUE,
   `end_point` varchar(255) NOT NULL,
-  `api_key` varchar(255),
-  `secret_key` varchar(255),
   PRIMARY KEY  (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-INSERT INTO `cloud`.`region` values ('1','Local','http://localhost:8080/client/api','','');
-
-ALTER TABLE `cloud`.`account` ADD COLUMN `region_id` int unsigned NOT NULL DEFAULT '1';
-ALTER TABLE `cloud`.`user` ADD COLUMN `region_id` int unsigned NOT NULL DEFAULT '1';
-ALTER TABLE `cloud`.`domain` ADD COLUMN `region_id` int unsigned NOT NULL DEFAULT '1';
+INSERT INTO `cloud`.`region` values ('1','Local','http://localhost:8080/client/api');
 
 INSERT IGNORE INTO `cloud`.`configuration` VALUES ('Account Defaults', 'DEFAULT', 'management-server', 'max.account.cpus', '40', 'The default maximum number of cpu cores that can be used for an account');
 
@@ -489,7 +486,7 @@ ALTER TABLE `cloud`.`data_center` ADD COLUMN `ip6_dns2` varchar(255);
 
 DROP VIEW IF EXISTS `cloud`.`user_vm_view`;
 CREATE VIEW `cloud`.`user_vm_view` AS
-    select
+    select 
         vm_instance.id id,
         vm_instance.name name,
         user_vm.display_name display_name,
@@ -657,7 +654,7 @@ CREATE VIEW `cloud`.`user_vm_view` AS
 
 DROP VIEW IF EXISTS `cloud`.`domain_router_view`;
 CREATE VIEW `cloud`.`domain_router_view` AS
-    select
+    select 
         vm_instance.id id,
         vm_instance.name name,
         account.id account_id,
@@ -761,7 +758,7 @@ CREATE VIEW `cloud`.`domain_router_view` AS
 
 DROP VIEW IF EXISTS `cloud`.`security_group_view`;
 CREATE VIEW `cloud`.`security_group_view` AS
-    select
+    select 
         security_group.id id,
         security_group.name name,
         security_group.description description,
@@ -820,7 +817,7 @@ CREATE VIEW `cloud`.`security_group_view` AS
 
 DROP VIEW IF EXISTS `cloud`.`resource_tag_view`;
 CREATE VIEW `cloud`.`resource_tag_view` AS
-    select
+    select 
         resource_tags.id,
         resource_tags.uuid,
         resource_tags.key,
@@ -852,7 +849,7 @@ CREATE VIEW `cloud`.`resource_tag_view` AS
 
 DROP VIEW IF EXISTS `cloud`.`event_view`;
 CREATE VIEW `cloud`.`event_view` AS
-    select
+    select 
         event.id,
         event.uuid,
         event.type,
@@ -891,7 +888,7 @@ CREATE VIEW `cloud`.`event_view` AS
 
 DROP VIEW IF EXISTS `cloud`.`instance_group_view`;
 CREATE VIEW `cloud`.`instance_group_view` AS
-    select
+    select 
         instance_group.id,
         instance_group.uuid,
         instance_group.name,
@@ -919,7 +916,7 @@ CREATE VIEW `cloud`.`instance_group_view` AS
 
 DROP VIEW IF EXISTS `cloud`.`user_view`;
 CREATE VIEW `cloud`.`user_view` AS
-    select
+    select 
         user.id,
         user.uuid,
         user.username,
@@ -962,7 +959,7 @@ CREATE VIEW `cloud`.`user_view` AS
 
 DROP VIEW IF EXISTS `cloud`.`project_view`;
 CREATE VIEW `cloud`.`project_view` AS
-    select
+    select 
         projects.id,
         projects.uuid,
         projects.name,
@@ -1003,7 +1000,7 @@ CREATE VIEW `cloud`.`project_view` AS
 
 DROP VIEW IF EXISTS `cloud`.`project_account_view`;
 CREATE VIEW `cloud`.`project_account_view` AS
-    select
+    select 
         project_account.id,
         account.id account_id,
         account.uuid account_uuid,
@@ -1028,7 +1025,7 @@ CREATE VIEW `cloud`.`project_account_view` AS
 
 DROP VIEW IF EXISTS `cloud`.`project_invitation_view`;
 CREATE VIEW `cloud`.`project_invitation_view` AS
-    select
+    select 
         project_invitations.id,
         project_invitations.uuid,
         project_invitations.email,
@@ -1056,7 +1053,7 @@ CREATE VIEW `cloud`.`project_invitation_view` AS
 
 DROP VIEW IF EXISTS `cloud`.`host_view`;
 CREATE VIEW `cloud`.`host_view` AS
-    select
+    select 
         host.id,
         host.uuid,
         host.name,
@@ -1126,7 +1123,7 @@ CREATE VIEW `cloud`.`host_view` AS
 
 DROP VIEW IF EXISTS `cloud`.`volume_view`;
 CREATE VIEW `cloud`.`volume_view` AS
-    select
+    select 
         volumes.id,
         volumes.uuid,
         volumes.name,
@@ -1227,7 +1224,7 @@ CREATE VIEW `cloud`.`volume_view` AS
 
 DROP VIEW IF EXISTS `cloud`.`account_netstats_view`;
 CREATE VIEW `cloud`.`account_netstats_view` AS
-    SELECT
+    SELECT 
         account_id,
         sum(net_bytes_received) + sum(current_bytes_received) as bytesReceived,
         sum(net_bytes_sent) + sum(current_bytes_sent) as bytesSent
@@ -1238,7 +1235,7 @@ CREATE VIEW `cloud`.`account_netstats_view` AS
 
 DROP VIEW IF EXISTS `cloud`.`account_vmstats_view`;
 CREATE VIEW `cloud`.`account_vmstats_view` AS
-    SELECT
+    SELECT 
         account_id, state, count(*) as vmcount
     from
         `cloud`.`vm_instance`
@@ -1246,7 +1243,7 @@ CREATE VIEW `cloud`.`account_vmstats_view` AS
 
 DROP VIEW IF EXISTS `cloud`.`free_ip_view`;
 CREATE VIEW `cloud`.`free_ip_view` AS
-    select
+    select 
         count(user_ip_address.id) free_ip
     from
         `cloud`.`user_ip_address`
@@ -1258,7 +1255,7 @@ CREATE VIEW `cloud`.`free_ip_view` AS
 
 DROP VIEW IF EXISTS `cloud`.`account_view`;
 CREATE VIEW `cloud`.`account_view` AS
-    select
+    select 
         account.id,
         account.uuid,
         account.account_name,
@@ -1385,7 +1382,7 @@ CREATE VIEW `cloud`.`account_view` AS
 
 DROP VIEW IF EXISTS `cloud`.`async_job_view`;
 CREATE VIEW `cloud`.`async_job_view` AS
-    select
+    select 
         account.id account_id,
         account.uuid account_uuid,
         account.account_name account_name,
@@ -1494,7 +1491,7 @@ CREATE VIEW `cloud`.`async_job_view` AS
 
 DROP VIEW IF EXISTS `cloud`.`storage_pool_view`;
 CREATE VIEW `cloud`.`storage_pool_view` AS
-    select
+    select 
         storage_pool.id,
         storage_pool.uuid,
         storage_pool.name,
@@ -1543,7 +1540,7 @@ CREATE VIEW `cloud`.`storage_pool_view` AS
 
 DROP VIEW IF EXISTS `cloud`.`disk_offering_view`;
 CREATE VIEW `cloud`.`disk_offering_view` AS
-    select
+    select 
         disk_offering.id,
         disk_offering.uuid,
         disk_offering.name,
@@ -1568,7 +1565,7 @@ CREATE VIEW `cloud`.`disk_offering_view` AS
 
 DROP VIEW IF EXISTS `cloud`.`service_offering_view`;
 CREATE VIEW `cloud`.`service_offering_view` AS
-    select
+    select 
         service_offering.id,
         disk_offering.uuid,
         disk_offering.name,
@@ -1599,10 +1596,10 @@ CREATE VIEW `cloud`.`service_offering_view` AS
         `cloud`.`disk_offering` ON service_offering.id = disk_offering.id
             left join
         `cloud`.`domain` ON disk_offering.domain_id = domain.id;
-
+        
 DROP VIEW IF EXISTS `cloud`.`data_center_view`;
 CREATE VIEW `cloud`.`data_center_view` AS
-    select
+    select 
         data_center.id,
         data_center.uuid,
         data_center.name,
@@ -1629,8 +1626,8 @@ CREATE VIEW `cloud`.`data_center_view` AS
     from
         `cloud`.`data_center`
             left join
-        `cloud`.`domain` ON data_center.domain_id = domain.id;
-
+        `cloud`.`domain` ON data_center.domain_id = domain.id;               
+        
 
 CREATE TABLE `cloud`.`baremetal_dhcp_devices` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'id',
@@ -1640,7 +1637,7 @@ CREATE TABLE `cloud`.`baremetal_dhcp_devices` (
   `device_type` varchar(255) DEFAULT NULL COMMENT 'type of the external device',
   `physical_network_id` bigint unsigned DEFAULT NULL COMMENT 'id of the physical network in to which external dhcp device is added',
   `host_id` bigint unsigned DEFAULT NULL COMMENT 'host id coresponding to the external dhcp device',
-  PRIMARY KEY (`id`)
+  PRIMARY KEY  (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 CREATE TABLE `cloud`.`baremetal_pxe_devices` (
@@ -1651,8 +1648,9 @@ CREATE TABLE `cloud`.`baremetal_pxe_devices` (
   `device_type` varchar(255) DEFAULT NULL COMMENT 'type of the pxe device',
   `physical_network_id` bigint unsigned DEFAULT NULL COMMENT 'id of the physical network in to which external pxe device is added',
   `host_id` bigint unsigned DEFAULT NULL COMMENT 'host id coresponding to the external pxe device',
-  PRIMARY KEY (`id`)
+  PRIMARY KEY  (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
 
 CREATE TABLE `cloud`.`ucs_blade` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'id',

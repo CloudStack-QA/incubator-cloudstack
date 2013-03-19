@@ -43,19 +43,19 @@ public class RegionManagerTest extends TestCase {
     protected void setUp() {
 
     }
-
+    
     @Test
     public void testUniqueName() {
-        RegionManagerImpl regionMgr = new RegionManagerImpl();
-        RegionDao regionDao = Mockito.mock(RegionDao.class);
-        RegionVO region = new RegionVO(2, "APAC", "", null, null);
-        Mockito.when(regionDao.findByName(Mockito.anyString())).thenReturn(region);
-        regionMgr._regionDao = regionDao;
-        try {
-            regionMgr.addRegion(2, "APAC", "", null, null);
-        } catch (InvalidParameterValueException e){
-            Assert.assertEquals("Region with name: APAC already exists", e.getMessage());
-        }
+    	RegionManagerImpl regionMgr = new RegionManagerImpl();
+    	RegionDao regionDao = Mockito.mock(RegionDao.class);
+    	RegionVO region = new RegionVO(2, "APAC", "");
+    	Mockito.when(regionDao.findByName(Mockito.anyString())).thenReturn(region);    	
+    	regionMgr._regionDao = regionDao;
+    	try {
+    		regionMgr.addRegion(2, "APAC", "");
+    	} catch (InvalidParameterValueException e){
+    		Assert.assertEquals("Region with name: APAC already exists", e.getMessage());
+    	}
     }
 
 }

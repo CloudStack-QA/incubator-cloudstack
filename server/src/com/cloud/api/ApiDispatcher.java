@@ -50,6 +50,8 @@ import org.apache.cloudstack.api.InternalIdentity;
 import org.apache.cloudstack.api.Parameter;
 import org.apache.cloudstack.api.ServerApiException;
 import org.apache.cloudstack.api.Validate;
+import org.apache.cloudstack.api.command.user.event.ArchiveEventsCmd;
+import org.apache.cloudstack.api.command.user.event.DeleteEventsCmd;
 import org.apache.cloudstack.api.command.user.event.ListEventsCmd;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Component;
@@ -135,7 +137,9 @@ public class ApiDispatcher {
             processParameters(cmd, params);
             UserContext ctx = UserContext.current();
             ctx.setAccountId(cmd.getEntityOwnerId());
-            if (cmd instanceof BaseAsyncCmd) {
+            
+            BaseCmd realCmdObj = ComponentContext.getTargetObject(cmd);
+            if (realCmdObj instanceof BaseAsyncCmd) {
 
                 BaseAsyncCmd asyncCmd = (BaseAsyncCmd) cmd;
                 String startEventId = params.get("ctxStartEventId");
@@ -370,8 +374,8 @@ public class ApiDispatcher {
         if (internalId == null) {
             if (s_logger.isDebugEnabled())
                 s_logger.debug("Object entity uuid = " + uuid + " does not exist in the database.");
-            throw new InvalidParameterValueException("Invalid parameter value=" + uuid
-                + " due to incorrect long value format, or entity was not found as it may have been deleted, or due to incorrect parameter annotation for the field in api cmd.");
+            throw new InvalidParameterValueException("Invalid parameter " + annotation.name() + " value=" + uuid
+                + " due to incorrect long value format, or entity does not exist or due to incorrect parameter annotation for the field in api cmd class.");
         }
         return internalId;
     }
@@ -389,7 +393,7 @@ public class ApiDispatcher {
                 // This piece of code is for maintaining backward compatibility
                 // and support both the date formats(Bug 9724)
                 // Do the date messaging for ListEventsCmd only
-                if (cmdObj instanceof ListEventsCmd) {
+                if (cmdObj instanceof ListEventsCmd || cmdObj instanceof DeleteEventsCmd || cmdObj instanceof ArchiveEventsCmd) {
                     boolean isObjInNewDateFormat = isObjInNewDateFormat(paramObj.toString());
                     if (isObjInNewDateFormat) {
                         DateFormat newFormat = BaseCmd.NEW_INPUT_FORMAT;
@@ -404,6 +408,8 @@ public class ApiDispatcher {
                                 date = messageDate(date, 0, 0, 0);
                             } else if (field.getName().equals("endDate")) {
                                 date = messageDate(date, 23, 59, 59);
+                            } else if (field.getName().equals("olderThan")) {
+                                date = messageDate(date, 0, 0, 0);
                             }
                             field.set(cmdObj, date);
                         }

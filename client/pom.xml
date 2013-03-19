@@ -67,6 +67,11 @@
     </dependency>
     <dependency>
       <groupId>org.apache.cloudstack</groupId>
+      <artifactId>cloud-plugin-snmp-alerts</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.cloudstack</groupId>
       <artifactId>cloud-plugin-network-ovs</artifactId>
       <version>${project.version}</version>
     </dependency>
@@ -271,6 +276,10 @@
                 <copy todir="${basedir}/target/generated-webapp/WEB-INF/classes/scripts">
                   <fileset dir="${basedir}/../scripts" />
                 </copy>
+                <!--  CLOUDSTACK-1304 -->
+                <chmod perm="755" >
+                    <fileset dir="${basedir}/target/generated-webapp/WEB-INF/classes/scripts" />
+                </chmod>
                 <copy
                   todir="${basedir}/target/generated-webapp/WEB-INF/">
                   <fileset dir="${basedir}/WEB-INF/">

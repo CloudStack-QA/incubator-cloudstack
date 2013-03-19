@@ -18,7 +18,13 @@
 
 set -x
 
-appliance="systemvmtemplate"
+if [ ! -z "$1" ]
+then
+  appliance="$1"
+else
+  appliance="systemvmtemplate"
+fi
+
 build_date=`date +%Y-%m-%d`
 branch="master"
 rootdir=$PWD
@@ -46,7 +52,7 @@ hdd_path=`vboxmanage list hdds | grep $appliance | grep vdi | cut -c 14-`
 shared_folders=`vboxmanage showvminfo $appliance | grep Name | grep Host`
 while [ "$shared_folders" != "" ]
 do
-  vboxmanage sharedfolder remove systemvmtemplate --name "`echo $shared_folders | head -1 | cut -c 8- | cut -d \' -f 1`"
+  vboxmanage sharedfolder remove $appliance --name "`echo $shared_folders | head -1 | cut -c 8- | cut -d \' -f 1`"
   shared_folders=`vboxmanage showvminfo $appliance | grep Name | grep Host`
 done
 
@@ -70,7 +76,7 @@ echo "$appliance exported for Xen: dist/$appliance-$build_date-$branch-xen.vhd.b
 
 # Export for KVM
 vboxmanage internalcommands converttoraw "$hdd_path" raw.img
-qemu-img convert -f raw -O qcow2 raw.img $appliance-$build_date-$branch-kvm.qcow2
+qemu-img convert -f raw -c -O qcow2 raw.img $appliance-$build_date-$branch-kvm.qcow2
 rm raw.img
 bzip2 $appliance-$build_date-$branch-kvm.qcow2
 echo "$appliance exported for KVM: dist/$appliance-$build_date-$branch-kvm.qcow2.bz2"

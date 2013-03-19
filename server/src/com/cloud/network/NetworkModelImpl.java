@@ -92,6 +92,7 @@ import com.cloud.user.Account;
 import com.cloud.user.DomainManager;
 import com.cloud.user.dao.AccountDao;
 import com.cloud.utils.component.AdapterBase;
+import com.cloud.utils.component.ComponentContext;
 import com.cloud.utils.component.Manager;
 import com.cloud.utils.component.ManagerBase;
 import com.cloud.utils.db.DB;
@@ -398,9 +399,9 @@ public class NetworkModelImpl extends ManagerBase implements NetworkModel {
         Network network = _networksDao.findById(networkId);
         NetworkElement oldElement = getElementImplementingProvider(oldProvider.getName());
         NetworkElement newElement = getElementImplementingProvider(newProvider.getName());
-        if (oldElement instanceof IpDeployingRequester && newElement instanceof IpDeployingRequester) {
-        	IpDeployer oldIpDeployer = ((IpDeployingRequester)oldElement).getIpDeployer(network);
-        	IpDeployer newIpDeployer = ((IpDeployingRequester)newElement).getIpDeployer(network);
+        if (ComponentContext.getTargetObject(oldElement) instanceof IpDeployingRequester && ComponentContext.getTargetObject(newElement) instanceof IpDeployingRequester) {
+        	IpDeployer oldIpDeployer = ((IpDeployingRequester)ComponentContext.getTargetObject(oldElement)).getIpDeployer(network);
+        	IpDeployer newIpDeployer = ((IpDeployingRequester)ComponentContext.getTargetObject(newElement)).getIpDeployer(network);
         	if (!oldIpDeployer.getProvider().getName().equals(newIpDeployer.getProvider().getName())) {
         		throw new InvalidParameterException("There would be multiple providers for IP " + publicIp.getAddress() + "!");
         	}
@@ -741,7 +742,7 @@ public class NetworkModelImpl extends ManagerBase implements NetworkModel {
 
     @Override
     public Nic getNicInNetwork(long vmId, long networkId) {
-        return _nicDao.findByInstanceIdAndNetworkId(networkId, vmId);
+        return _nicDao.findByInstanceIdAndNetworkIdIncludingRemoved(networkId, vmId);
     }
 
     @Override
@@ -1456,11 +1457,11 @@ public class NetworkModelImpl extends ManagerBase implements NetworkModel {
         if (network.getGuestType() != Network.GuestType.Shared) {
             List<NetworkVO> networkMap = _networksDao.listBy(owner.getId(), network.getId());
             if (networkMap == null || networkMap.isEmpty()) {
-                throw new PermissionDeniedException("Unable to use network with id= " + network.getId() + ", permission denied");
+                throw new PermissionDeniedException("Unable to use network with id= " + network.getUuid() + ", permission denied");
             }
         } else {
             if (!isNetworkAvailableInDomain(network.getId(), owner.getDomainId())) {
-                throw new PermissionDeniedException("Shared network id=" + network.getId() + " is not available in domain id=" + owner.getDomainId());
+                throw new PermissionDeniedException("Shared network id=" + network.getUuid() + " is not available in domain id=" + owner.getDomainId());
             }
         }
     }
@@ -1971,4 +1972,21 @@ public class NetworkModelImpl extends ManagerBase implements NetworkModel {
             }
         }
     }
+
+	@Override
+	public String getStartIpv6Address(long networkId) {
+    	List<VlanVO> vlans = _vlanDao.listVlansByNetworkId(networkId);
+    	if (vlans == null) {
+    		return null;
+    	}
+    	String startIpv6 = null;
+    	// Get the start ip of first create vlan(not the lowest, because if you add a lower vlan, lowest vlan would change)
+    	for (Vlan vlan : vlans) {
+    		if (vlan.getIp6Range() != null) {
+    			startIpv6 = vlan.getIp6Range().split("-")[0];
+    			break;
+    		}
+    	}
+		return startIpv6;
+	}
 }

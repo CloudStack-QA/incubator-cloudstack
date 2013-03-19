@@ -30,9 +30,11 @@ import org.springframework.stereotype.Component;
 
 import com.cloud.dc.Vlan.VlanType;
 import com.cloud.dc.VlanVO;
+import com.cloud.dc.dao.VlanDao;
 import com.cloud.dc.dao.VlanDaoImpl;
 import com.cloud.network.IpAddress.State;
 import com.cloud.server.ResourceTag.TaggedResourceType;
+import com.cloud.tags.dao.ResourceTagDao;
 import com.cloud.tags.dao.ResourceTagsDaoImpl;
 import com.cloud.utils.db.DB;
 import com.cloud.utils.db.GenericDaoBase;
@@ -57,9 +59,9 @@ public class IPAddressDaoImpl extends GenericDaoBase<IPAddressVO, Long> implemen
     protected GenericSearchBuilder<IPAddressVO, Integer> AllocatedIpCount;
     protected GenericSearchBuilder<IPAddressVO, Integer> AllIpCountForDashboard;    
     protected GenericSearchBuilder<IPAddressVO, Long> AllocatedIpCountForAccount;    
-    @Inject protected VlanDaoImpl _vlanDao;
+    @Inject protected VlanDao _vlanDao;
     protected GenericSearchBuilder<IPAddressVO, Long> CountFreePublicIps;
-    @Inject ResourceTagsDaoImpl _tagsDao;
+    @Inject ResourceTagDao _tagsDao;
 
     // make it public for JUnit test
     public IPAddressDaoImpl() {
@@ -178,6 +180,14 @@ public class IPAddressDaoImpl extends GenericDaoBase<IPAddressVO, Long> implemen
     public IPAddressVO findByIpAndSourceNetworkId(long networkId, String ipAddress) {
         SearchCriteria<IPAddressVO> sc = AllFieldsSearch.create();
         sc.setParameters("sourcenetwork", networkId);
+        sc.setParameters("ipAddress", ipAddress);
+        return findOneBy(sc);
+    }
+
+    @Override
+    public IPAddressVO findByIpAndNetworkId(long networkId, String ipAddress) {
+        SearchCriteria<IPAddressVO> sc = AllFieldsSearch.create();
+        sc.setParameters("network", networkId);
         sc.setParameters("ipAddress", ipAddress);
         return findOneBy(sc);
     }

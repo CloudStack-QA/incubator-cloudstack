@@ -16,44 +16,32 @@
 // under the License.
 package org.apache.cloudstack.region;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-import javax.ejb.Local;
-import javax.inject.Inject;
-import javax.naming.ConfigurationException;
-
-import org.apache.cloudstack.api.ApiConstants;
-import org.apache.cloudstack.api.command.admin.account.UpdateAccountCmd;
-import org.apache.cloudstack.api.command.admin.domain.UpdateDomainCmd;
-import org.apache.cloudstack.api.command.admin.user.DeleteUserCmd;
-import org.apache.cloudstack.api.command.admin.user.UpdateUserCmd;
-import org.apache.cloudstack.region.dao.RegionDao;
-import org.apache.cloudstack.region.dao.RegionSyncDao;
-import org.apache.commons.httpclient.NameValuePair;
-import org.apache.log4j.Logger;
-import org.springframework.stereotype.Component;
-
 import com.cloud.domain.Domain;
-import com.cloud.domain.DomainVO;
-import com.cloud.domain.dao.DomainDao;
 import com.cloud.exception.ConcurrentOperationException;
 import com.cloud.exception.InvalidParameterValueException;
 import com.cloud.exception.ResourceUnavailableException;
 import com.cloud.user.Account;
 import com.cloud.user.AccountManager;
-import com.cloud.user.AccountVO;
 import com.cloud.user.DomainManager;
 import com.cloud.user.UserAccount;
-import com.cloud.user.UserVO;
 import com.cloud.user.dao.AccountDao;
 import com.cloud.user.dao.UserAccountDao;
-import com.cloud.user.dao.UserDao;
 import com.cloud.utils.component.Manager;
 import com.cloud.utils.component.ManagerBase;
-import com.cloud.utils.exception.CloudRuntimeException;
-import com.cloud.uuididentity.dao.IdentityDao;
+import org.apache.cloudstack.api.command.admin.account.UpdateAccountCmd;
+import org.apache.cloudstack.api.command.admin.domain.UpdateDomainCmd;
+import org.apache.cloudstack.api.command.admin.user.DeleteUserCmd;
+import org.apache.cloudstack.api.command.admin.user.UpdateUserCmd;
+import org.apache.cloudstack.region.dao.RegionDao;
+import org.apache.log4j.Logger;
+import org.springframework.stereotype.Component;
+
+import javax.ejb.Local;
+import javax.inject.Inject;
+import javax.naming.ConfigurationException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 @Component
 @Local(value = { RegionManager.class })
@@ -67,17 +55,7 @@ public class RegionManagerImpl extends ManagerBase implements RegionManager, Man
     @Inject
     private AccountManager _accountMgr;
     @Inject
-    private UserDao _userDao;
-    @Inject
-    private DomainDao _domainDao;
-    @Inject
     private DomainManager _domainMgr;
-    @Inject
-    private UserAccountDao _userAccountDao;    
-    @Inject
-    private IdentityDao _identityDao;
-    @Inject
-    private RegionSyncDao _regionSyncDao;
 
     private String _name;
     private int _id; 
@@ -112,7 +90,7 @@ public class RegionManagerImpl extends ManagerBase implements RegionManager, Man
      * {@inheritDoc}
      */ 
     @Override
-    public Region addRegion(int id, String name, String endPoint, String apiKey, String secretKey) {
+    public Region addRegion(int id, String name, String endPoint) {
         //Region Id should be unique
         if( _regionDao.findById(id) != null ){
             throw new InvalidParameterValueException("Region with id: "+id+" already exists");
@@ -121,7 +99,7 @@ public class RegionManagerImpl extends ManagerBase implements RegionManager, Man
         if( _regionDao.findByName(name) != null ){
             throw new InvalidParameterValueException("Region with name: "+name+" already exists");
         }
-        RegionVO region = new RegionVO(id, name, endPoint, apiKey, secretKey);
+        RegionVO region = new RegionVO(id, name, endPoint);
         return _regionDao.persist(region);
     }
 
@@ -129,7 +107,7 @@ public class RegionManagerImpl extends ManagerBase implements RegionManager, Man
      * {@inheritDoc}
      */ 
     @Override
-    public Region updateRegion(int id, String name, String endPoint, String apiKey, String secretKey) {
+    public Region updateRegion(int id, String name, String endPoint) {
         RegionVO region = _regionDao.findById(id);
 
         if(region == null){
@@ -150,14 +128,6 @@ public class RegionManagerImpl extends ManagerBase implements RegionManager, Man
 
         if(endPoint != null){
             region.setEndPoint(endPoint);
-        }
-
-        if(apiKey != null){
-            region.setApiKey(apiKey);
-        }
-
-        if(secretKey != null){
-            region.setSecretKey(secretKey);
         }
 
         _regionDao.update(id, region);
@@ -198,4 +168,91 @@ public class RegionManagerImpl extends ManagerBase implements RegionManager, Man
         }
         return _regionDao.listAll();
     }
+
+    /**
+     * {@inheritDoc}
+     */ 
+    @Override
+    public boolean deleteUserAccount(long accountId) {
+        return _accountMgr.deleteUserAccount(accountId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */ 
+    @Override
+    public Account updateAccount(UpdateAccountCmd cmd) {
+        return _accountMgr.updateAccount(cmd);
+    }
+
+    /**
+     * {@inheritDoc}
+     */ 
+    @Override
+    public Account disableAccount(String accountName, Long domainId, Long accountId, Boolean lockRequested) throws ConcurrentOperationException, ResourceUnavailableException {
+        Account account = null;
+        if(lockRequested){
+            account = _accountMgr.lockAccount(accountName, domainId, accountId);
+        } else {
+            account = _accountMgr.disableAccount(accountName, domainId, accountId);
+        }
+        return account;
+    }
+
+    /**
+     * {@inheritDoc}
+     */ 
+    @Override
+    public Account enableAccount(String accountName, Long domainId, Long accountId) {
+        return _accountMgr.enableAccount(accountName, domainId, accountId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean deleteUser(DeleteUserCmd cmd) {
+        return _accountMgr.deleteUser(cmd);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Domain updateDomain(UpdateDomainCmd cmd) {
+        return _domainMgr.updateDomain(cmd);
+    }
+
+    /**
+     * {@inheritDoc}
+     */ 
+    @Override
+    public boolean deleteDomain(Long id, Boolean cleanup) {
+        return _domainMgr.deleteDomain(id, cleanup);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public UserAccount updateUser(UpdateUserCmd cmd) {
+        return _accountMgr.updateUser(cmd);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public UserAccount disableUser(Long userId) {
+        return _accountMgr.disableUser(userId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public UserAccount enableUser(long userId) {
+        return _accountMgr.enableUser(userId);
+    }
+
 }
