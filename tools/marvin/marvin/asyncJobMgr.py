@@ -164,7 +164,7 @@ class asyncJobMgr(object):
     def updateTimeStamp(self, jobstatus):
         jobId = jobstatus.jobId
         if jobId is not None and self.db is not None:
-            result = self.db.execute("select job_status, created, last_updated from async_job where id=%s"%jobId)
+            result = self.db.execute("select job_status, created, last_updated from async_job where id='%s'"% str(jobId))
             if result is not None and len(result) > 0:
                 if result[0][0] == 1:
                     jobstatus.status = True
