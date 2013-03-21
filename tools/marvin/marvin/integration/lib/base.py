@@ -1909,10 +1909,11 @@ class VpnUser:
 
     @classmethod
     def create(cls, apiclient, username, password, account=None, domainid=None,
-               projectid=None):
+               projectid=None, rand_name=True):
         """Create VPN user"""
         cmd = addVpnUser.addVpnUserCmd()
-        cmd.username = username
+        cmd.username = "-".join([username,
+                                 random_gen()]) if rand_name else username
         cmd.password = password
 
         if account:
@@ -2804,3 +2805,27 @@ class SSHKeyPair:
         cmd = listSSHKeyPairs.listSSHKeyPairsCmd()
         [setattr(cmd, k, v) for k, v in kwargs.items()]
         return(apiclient.listSSHKeyPairs(cmd))
+
+
+class Capacities:
+    """Manage Capacities"""
+
+    @classmethod
+    def list(cls, apiclient, **kwargs):
+        """Lists capacities"""
+
+        cmd = listCapacity.listCapacityCmd()
+        [setattr(cmd, k, v) for k, v in kwargs.items()]
+        return(apiclient.listCapacity(cmd))
+
+
+class Alert:
+    """Manage alerts"""
+
+    @classmethod
+    def list(cls, apiclient, **kwargs):
+        """Lists alerts"""
+
+        cmd = listAlerts.listAlertsCmd()
+        [setattr(cmd, k, v) for k, v in kwargs.items()]
+        return(apiclient.listAlerts(cmd))
