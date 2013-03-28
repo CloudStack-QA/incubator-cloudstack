@@ -5,9 +5,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -16,7 +16,7 @@
 # under the License.
 """ BVT tests for Network Life Cycle
 """
-#Import Local Modules
+# Import Local Modules
 import marvin
 from marvin.cloudstackTestCase import *
 from marvin.cloudstackAPI import *
@@ -25,10 +25,11 @@ from marvin.integration.lib.utils import *
 from marvin.integration.lib.base import *
 from marvin.integration.lib.common import *
 from nose.plugins.attrib import attr
-#Import System modules
+# Import System modules
 import time
 
 _multiprocess_shared_ = True
+
 
 class Services:
     """Test Network Services
@@ -40,7 +41,7 @@ class Services:
                             # Cent OS 5.3 (64 bit)
                             "mode": 'advanced',
                             # Networking mode: Basic or advanced
-                            "lb_switch_wait": 10,
+                            "lb_switch_wait": 30,
                             # Time interval after which LB switches the requests
                             "sleep": 60,
                             "timeout":10,
@@ -182,13 +183,13 @@ class TestPublicIP(cloudstackTestCase):
     @classmethod
     def tearDownClass(cls):
         try:
-            #Cleanup resources used
+            # Cleanup resources used
             cleanup_resources(cls.api_client, cls._cleanup)
         except Exception as e:
             raise Exception("Warning: Exception during cleanup : %s" % e)
         return
 
-    @attr(tags = ["advanced", "advancedns", "smoke"])
+    @attr(tags=["advanced", "advancedns", "smoke"])
     def test_public_ip_admin_account(self):
         """Test for Associate/Disassociate
         public IP address for admin account"""
@@ -212,7 +213,7 @@ class TestPublicIP(cloudstackTestCase):
                             True,
                             "Check list response returns a valid list"
                         )
-        #listPublicIpAddresses should return newly created public IP
+        # listPublicIpAddresses should return newly created public IP
         self.assertNotEqual(
                             len(list_pub_ip_addr_resp),
                             0,
@@ -239,7 +240,7 @@ class TestPublicIP(cloudstackTestCase):
                     )
         return
 
-    @attr(tags = ["advanced", "advancedns", "smoke"])
+    @attr(tags=["advanced", "advancedns", "smoke"])
     def test_public_ip_user_account(self):
         """Test for Associate/Disassociate
             public IP address for user account"""
@@ -255,7 +256,7 @@ class TestPublicIP(cloudstackTestCase):
                                             self.user.account.domainid
                                             )
 
-        #listPublicIpAddresses should return newly created public IP
+        # listPublicIpAddresses should return newly created public IP
         list_pub_ip_addr_resp = list_publicIP(
                                               self.apiclient,
                                               id=ip_address.ipaddress.id
@@ -307,7 +308,7 @@ class TestPortForwarding(cloudstackTestCase):
                             cls.zone.id,
                             cls.services["ostype"]
                             )
-        #Create an account, network, VM and IP addresses
+        # Create an account, network, VM and IP addresses
         cls.account = Account.create(
                                 cls.api_client,
                                 cls.services["account"],
@@ -350,13 +351,13 @@ class TestPortForwarding(cloudstackTestCase):
         cleanup_resources(self.apiclient, self.cleanup)
         return
 
-    @attr(tags = ["advanced", "advancedns", "smoke"])
+    @attr(tags=["advanced", "advancedns", "smoke"])
     def test_01_port_fwd_on_src_nat(self):
         """Test for port forwarding on source NAT"""
 
-        #Validate the following:
-        #1. listPortForwarding rules API should return the added PF rule
-        #2. attempt to do an ssh into the  user VM through the sourceNAT
+        # Validate the following:
+        # 1. listPortForwarding rules API should return the added PF rule
+        # 2. attempt to do an ssh into the  user VM through the sourceNAT
 
         src_nat_ip_addrs = list_publicIP(
                                     self.apiclient,
@@ -393,7 +394,7 @@ class TestPortForwarding(cloudstackTestCase):
                             'Running',
                             "VM state should be Running before creating a NAT rule."
                         )
-        # Open up firewall port for SSH        
+        # Open up firewall port for SSH
         fw_rule = FireWallRule.create(
                             self.apiclient,
                             ipaddressid=src_nat_ip_addr.id,
@@ -403,7 +404,7 @@ class TestPortForwarding(cloudstackTestCase):
                             endport=self.services["natrule"]["publicport"]
                             )
 
-        #Create NAT rule
+        # Create NAT rule
         nat_rule = NATRule.create(
                         self.apiclient,
                         self.virtual_machine,
@@ -431,7 +432,7 @@ class TestPortForwarding(cloudstackTestCase):
                             nat_rule.id,
                             "Check Correct Port forwarding Rule is returned"
                         )
-        #SSH virtual machine to test port forwarding
+        # SSH virtual machine to test port forwarding
         try:
             self.debug("SSHing into VM with IP address %s with NAT IP %s" %
                                     (
@@ -473,13 +474,13 @@ class TestPortForwarding(cloudstackTestCase):
                                             )
         return
 
-    @attr(tags = ["advanced", "advancedns", "smoke"])
+    @attr(tags=["advanced", "advancedns", "smoke"])
     def test_02_port_fwd_on_non_src_nat(self):
         """Test for port forwarding on non source NAT"""
 
-        #Validate the following:
-        #1. listPortForwardingRules should not return the deleted rule anymore
-        #2. attempt to do ssh should now fail
+        # Validate the following:
+        # 1. listPortForwardingRules should not return the deleted rule anymore
+        # 2. attempt to do ssh should now fail
 
         ip_address = PublicIPAddress.create(
                                             self.apiclient,
@@ -512,7 +513,7 @@ class TestPortForwarding(cloudstackTestCase):
                             'Running',
                             "VM state should be Running before creating a NAT rule."
                         )
-        # Open up firewall port for SSH        
+        # Open up firewall port for SSH
         fw_rule = FireWallRule.create(
                             self.apiclient,
                             ipaddressid=ip_address.ipaddress.id,
@@ -521,16 +522,16 @@ class TestPortForwarding(cloudstackTestCase):
                             startport=self.services["natrule"]["publicport"],
                             endport=self.services["natrule"]["publicport"]
                             )
-        #Create NAT rule
+        # Create NAT rule
         nat_rule = NATRule.create(
                                   self.apiclient,
                                   self.virtual_machine,
                                   self.services["natrule"],
                                   ip_address.ipaddress.id
                                   )
-        #Validate the following:
-        #1. listPortForwardingRules should not return the deleted rule anymore
-        #2. attempt to do ssh should now fail
+        # Validate the following:
+        # 1. listPortForwardingRules should not return the deleted rule anymore
+        # 2. attempt to do ssh should now fail
 
         list_nat_rule_response = list_nat_rules(
                                                 self.apiclient,
@@ -608,7 +609,7 @@ class TestLoadBalancingRule(cloudstackTestCase):
                             )
         cls.services["server"]["zoneid"] = cls.zone.id
 
-        #Create an account, network, VM and IP addresses
+        # Create an account, network, VM and IP addresses
         cls.account = Account.create(
                             cls.api_client,
                             cls.services["account"],
@@ -642,7 +643,7 @@ class TestLoadBalancingRule(cloudstackTestCase):
                                             cls.account.account.domainid,
                                             cls.services["server"]
                                             )
-        # Open up firewall port for SSH        
+        # Open up firewall port for SSH
         cls.fw_rule = FireWallRule.create(
                             cls.api_client,
                             ipaddressid=cls.non_src_nat_ip.ipaddress.id,
@@ -670,14 +671,40 @@ class TestLoadBalancingRule(cloudstackTestCase):
         cleanup_resources(cls.api_client, cls._cleanup)
         return
 
-    @attr(tags = ["advanced", "advancedns", "smoke"])
+    def try_ssh(self, src_nat_ip_addr, hostnames):
+        try:
+            self.debug(
+                "SSH into VM (IPaddress: %s) & NAT Rule (Public IP: %s)" %
+                (self.vm_1.ipaddress, src_nat_ip_addr.ipaddress)
+                )
+
+            ssh_1 = remoteSSHClient(
+                                        src_nat_ip_addr.ipaddress,
+                                        self.services['lbrule']["publicport"],
+                                        self.vm_1.username,
+                                        self.vm_1.password
+                                        )
+
+            # If Round Robin Algorithm is chosen,
+            # each ssh command should alternate between VMs
+            # hostnames = [ssh_1.execute("hostname")[0]]
+            hostnames.append(ssh_1.execute("hostname")[0])
+
+        except Exception as e:
+            self.fail("%s: SSH failed for VM with IP Address: %s" %
+                                        (e, src_nat_ip_addr.ipaddress))
+
+        time.sleep(self.services["lb_switch_wait"])
+        return
+
+    @attr(tags=["advanced", "advancedns", "smoke"])
     def test_01_create_lb_rule_src_nat(self):
         """Test to create Load balancing rule with source NAT"""
 
         # Validate the Following:
-        #1. listLoadBalancerRules should return the added rule
-        #2. attempt to ssh twice on the load balanced IP
-        #3. verify using the hostname of the VM
+        # 1. listLoadBalancerRules should return the added rule
+        # 2. attempt to ssh twice on the load balanced IP
+        # 3. verify using the hostname of the VM
         #   that round robin is indeed happening as expected
 
         src_nat_ip_addrs = list_publicIP(
@@ -717,7 +744,7 @@ class TestLoadBalancingRule(cloudstackTestCase):
                             "VM state should be Running before creating a NAT rule."
                         )
 
-        #Create Load Balancer rule and assign VMs to rule
+        # Create Load Balancer rule and assign VMs to rule
         lb_rule = LoadBalancerRule.create(
                                           self.apiclient,
                                           self.services["lbrule"],
@@ -737,7 +764,7 @@ class TestLoadBalancingRule(cloudstackTestCase):
                             True,
                             "Check list response returns a valid list"
                         )
-        #verify listLoadBalancerRules lists the added load balancing rule
+        # verify listLoadBalancerRules lists the added load balancing rule
         self.assertNotEqual(
                             len(lb_rules),
                             0,
@@ -782,48 +809,12 @@ class TestLoadBalancingRule(cloudstackTestCase):
             [self.vm_1.id, self.vm_2.id],
             "Check List Load Balancer instances Rules returns valid VM ID"
             )
-        try:
-            self.debug(
-                "SSH into VM (IPaddress: %s) & NAT Rule (Public IP: %s)" %
-                (self.vm_1.ipaddress, src_nat_ip_addr.ipaddress)
-                )
-
-            ssh_1 = remoteSSHClient(
-                                        src_nat_ip_addr.ipaddress,
-                                        self.services['lbrule']["publicport"],
-                                        self.vm_1.username,
-                                        self.vm_1.password
-                                        )
-
-            # If Round Robin Algorithm is chosen,
-            # each ssh command should alternate between VMs
-            hostnames = [ssh_1.execute("hostname")[0]]
-
-        except Exception as e:
-            self.fail("%s: SSH failed for VM with IP Address: %s" %
-                                        (e, src_nat_ip_addr.ipaddress))
-
-        time.sleep(self.services["lb_switch_wait"])
-
-        try:
-            self.debug("SSHing into IP address: %s after adding VMs (ID: %s , %s)" %
-                                            (
-                                             src_nat_ip_addr.ipaddress,
-                                             self.vm_1.id,
-                                             self.vm_2.id
-                                             ))
-
-            ssh_2 = remoteSSHClient(
-                                        src_nat_ip_addr.ipaddress,
-                                        self.services['lbrule']["publicport"],
-                                        self.vm_1.username,
-                                        self.vm_1.password
-                                        )
-            hostnames.append(ssh_2.execute("hostname")[0])
-
-        except Exception as e:
-            self.fail("%s: SSH failed for VM with IP Address: %s" %
-                                        (e, src_nat_ip_addr.ipaddress))
+        hostnames = []
+        self.try_ssh(src_nat_ip_addr, hostnames)
+        self.try_ssh(src_nat_ip_addr, hostnames)
+        self.try_ssh(src_nat_ip_addr, hostnames)
+        self.try_ssh(src_nat_ip_addr, hostnames)
+        self.try_ssh(src_nat_ip_addr, hostnames)
 
         self.debug("Hostnames: %s" % str(hostnames))
         self.assertIn(
@@ -837,7 +828,7 @@ class TestLoadBalancingRule(cloudstackTestCase):
                       "Check if ssh succeeded for server2"
                       )
 
-        #SSH should pass till there is a last VM associated with LB rule
+        # SSH should pass till there is a last VM associated with LB rule
         lb_rule.remove(self.apiclient, [self.vm_2])
         try:
             self.debug("SSHing into IP address: %s after removing VM (ID: %s)" %
@@ -878,14 +869,14 @@ class TestLoadBalancingRule(cloudstackTestCase):
             ssh_1.execute("hostname")[0]
         return
 
-    @attr(tags = ["advanced", "advancedns", "smoke"])
+    @attr(tags=["advanced", "advancedns", "smoke"])
     def test_02_create_lb_rule_non_nat(self):
         """Test to create Load balancing rule with source NAT"""
 
         # Validate the Following:
-        #1. listLoadBalancerRules should return the added rule
-        #2. attempt to ssh twice on the load balanced IP
-        #3. verify using the hostname of the VM that
+        # 1. listLoadBalancerRules should return the added rule
+        # 2. attempt to ssh twice on the load balanced IP
+        # 3. verify using the hostname of the VM that
         #   round robin is indeed happening as expected
 
         # Check if VM is in Running state before creating LB rule
@@ -913,7 +904,7 @@ class TestLoadBalancingRule(cloudstackTestCase):
                             "VM state should be Running before creating a NAT rule."
                         )
 
-        #Create Load Balancer rule and assign VMs to rule
+        # Create Load Balancer rule and assign VMs to rule
         lb_rule = LoadBalancerRule.create(
                                           self.apiclient,
                                           self.services["lbrule"],
@@ -934,7 +925,7 @@ class TestLoadBalancingRule(cloudstackTestCase):
                             True,
                             "Check list response returns a valid list"
                         )
-        #verify listLoadBalancerRules lists the added load balancing rule
+        # verify listLoadBalancerRules lists the added load balancing rule
         self.assertNotEqual(
                             len(lb_rules),
                             0,
@@ -1019,7 +1010,7 @@ class TestLoadBalancingRule(cloudstackTestCase):
                       "Check if ssh succeeded for server2"
                       )
 
-            #SSH should pass till there is a last VM associated with LB rule
+            # SSH should pass till there is a last VM associated with LB rule
             lb_rule.remove(self.apiclient, [self.vm_2])
 
             self.debug("SSHing into IP address: %s after removing VM (ID: %s) from LB rule" %
@@ -1080,7 +1071,7 @@ class TestRebootRouter(cloudstackTestCase):
                             )
         self.services["server"]["zoneid"] = self.zone.id
 
-        #Create an account, network, VM and IP addresses
+        # Create an account, network, VM and IP addresses
         self.account = Account.create(
                                       self.apiclient,
                                       self.services["account"],
@@ -1117,7 +1108,7 @@ class TestRebootRouter(cloudstackTestCase):
                                            self.vm_1.domainid,
                                            self.services["server"]
                                            )
-        # Open up firewall port for SSH        
+        # Open up firewall port for SSH
         fw_rule = FireWallRule.create(
                             self.apiclient,
                             ipaddressid=self.public_ip.ipaddress.id,
@@ -1149,16 +1140,16 @@ class TestRebootRouter(cloudstackTestCase):
                         ]
         return
 
-    @attr(tags = ["advanced", "advancedns", "smoke"])
+    @attr(tags=["advanced", "advancedns", "smoke"])
     def test_reboot_router(self):
         """Test for reboot router"""
 
-        #Validate the Following
-        #1. Post restart PF and LB rules should still function
-        #2. verify if the ssh into the virtual machine
+        # Validate the Following
+        # 1. Post restart PF and LB rules should still function
+        # 2. verify if the ssh into the virtual machine
         #   still works through the sourceNAT Ip
 
-        #Retrieve router for the user account
+        # Retrieve router for the user account
         routers = list_routers(
                                 self.apiclient,
                                 account=self.account.account.name,
@@ -1203,7 +1194,7 @@ class TestRebootRouter(cloudstackTestCase):
 
             timeout = timeout - 1
 
-        #we should be able to SSH after successful reboot
+        # we should be able to SSH after successful reboot
         try:
             self.debug("SSH into VM (ID : %s ) after reboot" % self.vm_1.id)
 
@@ -1240,7 +1231,7 @@ class TestAssignRemoveLB(cloudstackTestCase):
                             )
         self.services["server"]["zoneid"] = self.zone.id
 
-        #Create VMs, accounts
+        # Create VMs, accounts
         self.account = Account.create(
                                       self.apiclient,
                                       self.services["account"],
@@ -1285,16 +1276,16 @@ class TestAssignRemoveLB(cloudstackTestCase):
                         ]
         return
 
-    @attr(tags = ["advanced", "advancedns", "smoke"])
+    @attr(tags=["advanced", "advancedns", "smoke"])
     def test_assign_and_removal_lb(self):
         """Test for assign & removing load balancing rule"""
 
         # Validate:
-        #1. Verify list API - listLoadBalancerRules lists
+        # 1. Verify list API - listLoadBalancerRules lists
         #   all the rules with the relevant ports
-        #2. listLoadBalancerInstances will list
+        # 2. listLoadBalancerInstances will list
         #   the instances associated with the corresponding rule.
-        #3. verify ssh attempts should pass as long as there
+        # 3. verify ssh attempts should pass as long as there
         #   is at least one instance associated with the rule
 
         src_nat_ip_addrs = list_publicIP(
@@ -1309,7 +1300,7 @@ class TestAssignRemoveLB(cloudstackTestCase):
                         )
         self.non_src_nat_ip = src_nat_ip_addrs[0]
 
-        # Open up firewall port for SSH        
+        # Open up firewall port for SSH
         fw_rule = FireWallRule.create(
                             self.apiclient,
                             ipaddressid=self.non_src_nat_ip.id,
@@ -1359,7 +1350,7 @@ class TestAssignRemoveLB(cloudstackTestCase):
                                              self.vm_1.id,
                                              self.vm_2.id
                                              ))
-            #Create SSH client for each VM
+            # Create SSH client for each VM
             ssh_1 = remoteSSHClient(
                                         self.non_src_nat_ip.ipaddress,
                                         self.services["lbrule"]["publicport"],
@@ -1409,7 +1400,7 @@ class TestAssignRemoveLB(cloudstackTestCase):
                       "Check if ssh succeeded for server2"
                       )
 
-        #Removing VM and assigning another VM to LB rule
+        # Removing VM and assigning another VM to LB rule
         lb_rule.remove(self.apiclient, [self.vm_2])
 
         try:
@@ -1499,7 +1490,7 @@ class TestReleaseIP(cloudstackTestCase):
                             )
         self.services["server"]["zoneid"] = self.zone.id
 
-        #Create an account, network, VM, Port forwarding rule, LB rules
+        # Create an account, network, VM, Port forwarding rule, LB rules
         self.account = Account.create(
                                       self.apiclient,
                                       self.services["account"],
@@ -1560,7 +1551,7 @@ class TestReleaseIP(cloudstackTestCase):
     def tearDown(self):
         cleanup_resources(self.apiclient, self.cleanup)
 
-    @attr(tags = ["advanced", "advancedns", "smoke"])
+    @attr(tags=["advanced", "advancedns", "smoke"])
     def test_releaseIP(self):
         """Test for Associate/Disassociate public IP address"""
 
@@ -1568,7 +1559,7 @@ class TestReleaseIP(cloudstackTestCase):
 
         self.ip_address.delete(self.apiclient)
 
-        # Sleep to ensure that deleted state is reflected in other calls 
+        # Sleep to ensure that deleted state is reflected in other calls
         time.sleep(self.services["sleep"])
 
         # ListPublicIpAddresses should not list deleted Public IP address
@@ -1639,7 +1630,7 @@ class TestDeleteAccount(cloudstackTestCase):
                             )
         self.services["server"]["zoneid"] = self.zone.id
 
-        #Create an account, network, VM and IP addresses
+        # Create an account, network, VM and IP addresses
         self.account = Account.create(
                                 self.apiclient,
                                 self.services["account"],
@@ -1689,11 +1680,11 @@ class TestDeleteAccount(cloudstackTestCase):
         self.cleanup = []
         return
 
-    @attr(tags = ["advanced", "advancedns", "smoke"])
+    @attr(tags=["advanced", "advancedns", "smoke"])
     def test_delete_account(self):
         """Test for delete account"""
 
-        #Validate the Following
+        # Validate the Following
         # 1. after account.cleanup.interval (global setting)
         #    time all the PF/LB rules should be deleted
         # 2. verify that list(LoadBalancer/PortForwarding)Rules
@@ -1750,7 +1741,7 @@ class TestDeleteAccount(cloudstackTestCase):
             raise Exception(
                 "Exception raised while fetching NAT rules for account: %s" %
                                                     self.account.account.name)
-        #Retrieve router for the user account
+        # Retrieve router for the user account
         try:
             routers = list_routers(
                           self.apiclient,

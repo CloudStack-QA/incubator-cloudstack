@@ -5,9 +5,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -16,7 +16,7 @@
 # under the License.
 """ BVT tests for Service offerings"""
 
-#Import Local Modules
+# Import Local Modules
 import marvin
 from marvin.cloudstackTestCase import *
 from marvin.cloudstackAPI import *
@@ -38,8 +38,8 @@ class Services:
                                 "name": "Service Offering",
                                 "displaytext": "Service Offering",
                                 "cpunumber": 1,
-                                "cpuspeed": 100, # MHz
-                                "memory": 128, # in MBs
+                                "cpuspeed": 100,    # MHz
+                                "memory": 128,    # in MBs
                             },
                      }
 
@@ -53,15 +53,15 @@ class TestCreateServiceOffering(cloudstackTestCase):
 
     def tearDown(self):
         try:
-            #Clean up, terminate the created templates
+            # Clean up, terminate the created templates
             cleanup_resources(self.apiclient, self.cleanup)
 
         except Exception as e:
             raise Exception("Warning: Exception during cleanup : %s" % e)
 
         return
-    
-    @attr(tags = ["advanced", "advancedns", "smoke", "basic", "eip", "sg"])
+
+    @attr(tags=["advanced", "advancedns", "smoke", "basic", "eip", "sg"])
     def test_01_create_service_offering(self):
         """Test to create service offering"""
 
@@ -86,7 +86,7 @@ class TestCreateServiceOffering(cloudstackTestCase):
                             True,
                             "Check list response returns a valid list"
                         )
-         
+
         self.assertNotEqual(
                         len(list_service_response),
                         0,
@@ -132,7 +132,7 @@ class TestServiceOfferings(cloudstackTestCase):
     def tearDown(self):
 
         try:
-            #Clean up, terminate the created templates
+            # Clean up, terminate the created templates
             cleanup_resources(self.apiclient, self.cleanup)
 
         except Exception as e:
@@ -159,14 +159,14 @@ class TestServiceOfferings(cloudstackTestCase):
     def tearDownClass(cls):
         try:
             cls.api_client = super(TestServiceOfferings, cls).getClsTestClient().getApiClient()
-            #Clean up, terminate the created templates
+            # Clean up, terminate the created templates
             cleanup_resources(cls.api_client, cls._cleanup)
 
         except Exception as e:
             raise Exception("Warning: Exception during cleanup : %s" % e)
         return
 
-    @attr(tags = ["advanced", "advancedns", "smoke", "basic", "eip", "sg"])
+    @attr(tags=["advanced", "advancedns", "smoke", "basic", "eip", "sg"])
     def test_02_edit_service_offering(self):
         """Test to update existing service offering"""
 
@@ -174,15 +174,15 @@ class TestServiceOfferings(cloudstackTestCase):
         # 1. updateServiceOffering should return
         #    a valid information for newly created offering
 
-        #Generate new name & displaytext from random data
+        # Generate new name & displaytext from random data
         random_displaytext = random_gen()
         random_name = random_gen()
 
-        self.debug("Updating service offering with ID: %s" % 
+        self.debug("Updating service offering with ID: %s" %
                                         self.service_offering_1.id)
 
         cmd = updateServiceOffering.updateServiceOfferingCmd()
-        #Add parameters for API call
+        # Add parameters for API call
         cmd.id = self.service_offering_1.id
         cmd.displaytext = random_displaytext
         cmd.name = random_name
@@ -197,7 +197,7 @@ class TestServiceOfferings(cloudstackTestCase):
                             True,
                             "Check list response returns a valid list"
                         )
-        
+
         self.assertNotEqual(
                             len(list_service_response),
                             0,
@@ -217,7 +217,7 @@ class TestServiceOfferings(cloudstackTestCase):
 
         return
 
-    @attr(tags = ["advanced", "advancedns", "smoke", "basic", "eip", "sg"])
+    @attr(tags=["advanced", "advancedns", "smoke", "basic", "eip", "sg"])
     def test_03_delete_service_offering(self):
         """Test to delete service offering"""
 
@@ -225,7 +225,7 @@ class TestServiceOfferings(cloudstackTestCase):
         # 1. deleteServiceOffering should return
         #    a valid information for newly created offering
 
-        self.debug("Deleting service offering with ID: %s" % 
+        self.debug("Deleting service offering with ID: %s" %
                                         self.service_offering_2.id)
 
         self.service_offering_2.delete(self.apiclient)

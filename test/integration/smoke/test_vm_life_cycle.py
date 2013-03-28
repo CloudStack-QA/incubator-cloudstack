@@ -5,9 +5,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -16,7 +16,7 @@
 # under the License.
 """ BVT tests for Virtual Machine Life Cycle
 """
-#Import Local Modules
+# Import Local Modules
 import marvin
 from marvin.cloudstackTestCase import *
 from marvin.cloudstackAPI import *
@@ -25,7 +25,7 @@ from marvin.integration.lib.utils import *
 from marvin.integration.lib.base import *
 from marvin.integration.lib.common import *
 from nose.plugins.attrib import attr
-#Import System modules
+# Import System modules
 import time
 
 _multiprocess_shared_ = True
@@ -45,15 +45,15 @@ class Services:
                     "firstname": "Test",
                     "lastname": "User",
                     "username": "test",
-                    # Random characters are appended in create account to 
+                    # Random characters are appended in create account to
                     # ensure unique username generated each time
                     "password": "password",
                 },
                 "small":
-                # Create a small virtual machine instance with disk offering 
+                # Create a small virtual machine instance with disk offering
                 {
                     "displayname": "testserver",
-                    "username": "root", # VM creds for SSH
+                    "username": "root",    # VM creds for SSH
                     "password": "password",
                     "ssh_port": 22,
                     "hypervisor": 'XenServer',
@@ -61,7 +61,7 @@ class Services:
                     "publicport": 22,
                     "protocol": 'TCP',
                 },
-                "medium":   # Create a medium virtual machine instance 
+                "medium":    # Create a medium virtual machine instance
                 {
                     "displayname": "testserver",
                     "username": "root",
@@ -79,12 +79,12 @@ class Services:
                         "name": "Tiny Instance",
                         "displaytext": "Tiny Instance",
                         "cpunumber": 1,
-                        "cpuspeed": 100, # in MHz
-                        "memory": 128, # In MBs
+                        "cpuspeed": 100,    # in MHz
+                        "memory": 128,    # In MBs
                     },
                  "small":
                     {
-                     # Small service offering ID to for change VM 
+                     # Small service offering ID to for change VM
                      # service offering from medium to small
                         "name": "Small Instance",
                         "displaytext": "Small Instance",
@@ -103,14 +103,14 @@ class Services:
                         "memory": 256,
                     }
                 },
-                "iso":  # ISO settings for Attach/Detach ISO tests
+                "iso":    # ISO settings for Attach/Detach ISO tests
                 {
                     "displaytext": "Test ISO",
                     "name": "testISO",
                     "url": "http://iso.linuxquestions.org/download/504/1819/http/gd4.tuwien.ac.at/dsl-4.4.10.iso",
                      # Source URL where ISO is located
                     "ostype": 'CentOS 5.3 (64-bit)',
-                    "mode": 'HTTP_DOWNLOAD', # Downloading existing ISO 
+                    "mode": 'HTTP_DOWNLOAD',    # Downloading existing ISO
                 },
                 "template": {
                     "displaytext": "Cent OS Template",
@@ -122,7 +122,7 @@ class Services:
             "mount_dir": "/mnt/tmp",
             "sleep": 60,
             "timeout": 10,
-            #Migrate VM to hostid
+            # Migrate VM to hostid
             "ostype": 'CentOS 5.3 (64-bit)',
             # CentOS 5.3 (64-bit)
         }
@@ -140,8 +140,8 @@ class TestDeployVM(cloudstackTestCase):
         zone = get_zone(self.apiclient, self.services)
         self.services['mode'] = zone.networktype
 
-        #if local storage is enabled, alter the offerings to use localstorage
-        #this step is needed for devcloud
+        # if local storage is enabled, alter the offerings to use localstorage
+        # this step is needed for devcloud
         if zone.localstorageenabled == True:
             self.services["service_offerings"]["tiny"]["storagetype"] = 'local'
             self.services["service_offerings"]["small"]["storagetype"] = 'local'
@@ -177,7 +177,7 @@ class TestDeployVM(cloudstackTestCase):
                         self.account
                         ]
 
-    @attr(tags = ["devcloud", "advanced", "advancedns", "smoke", "basic", "sg"])
+    @attr(tags=["devcloud", "advanced", "advancedns", "smoke", "basic", "sg"])
     def test_deploy_vm(self):
         """Test Deploy Virtual Machine
         """
@@ -252,8 +252,8 @@ class TestVMLifeCycle(cloudstackTestCase):
         zone = get_zone(cls.api_client, cls.services)
         cls.services['mode'] = zone.networktype
 
-        #if local storage is enabled, alter the offerings to use localstorage
-        #this step is needed for devcloud
+        # if local storage is enabled, alter the offerings to use localstorage
+        # this step is needed for devcloud
         if zone.localstorageenabled == True:
             cls.services["service_offerings"]["tiny"]["storagetype"] = 'local'
             cls.services["service_offerings"]["small"]["storagetype"] = 'local'
@@ -288,7 +288,7 @@ class TestVMLifeCycle(cloudstackTestCase):
                                     cls.api_client,
                                     cls.services["service_offerings"]["medium"]
                                     )
-        #create small and large virtual machines
+        # create small and large virtual machines
         cls.small_virtual_machine = VirtualMachine.create(
                                         cls.api_client,
                                         cls.services["small"],
@@ -331,12 +331,12 @@ class TestVMLifeCycle(cloudstackTestCase):
         self.cleanup = []
 
     def tearDown(self):
-        #Clean up, terminate the created ISOs
+        # Clean up, terminate the created ISOs
         cleanup_resources(self.apiclient, self.cleanup)
         return
 
-    
-    @attr(tags = ["devcloud", "advanced", "advancedns", "smoke", "basic", "sg"])
+
+    @attr(tags=["devcloud", "advanced", "advancedns", "smoke", "basic", "sg"])
     def test_01_stop_vm(self):
         """Test Stop Virtual Machine
         """
@@ -372,7 +372,7 @@ class TestVMLifeCycle(cloudstackTestCase):
                         )
         return
 
-    @attr(tags = ["devcloud", "advanced", "advancedns", "smoke", "basic", "sg"])
+    @attr(tags=["devcloud", "advanced", "advancedns", "smoke", "basic", "sg"])
     def test_02_start_vm(self):
         """Test Start Virtual Machine
         """
@@ -410,7 +410,7 @@ class TestVMLifeCycle(cloudstackTestCase):
                         )
         return
 
-    @attr(tags = ["devcloud", "advanced", "advancedns", "smoke", "basic", "sg"])
+    @attr(tags=["devcloud", "advanced", "advancedns", "smoke", "basic", "sg"])
     def test_03_reboot_vm(self):
         """Test Reboot Virtual Machine
         """
@@ -446,15 +446,15 @@ class TestVMLifeCycle(cloudstackTestCase):
                         )
         return
 
-    @attr(tags = ["advanced", "advancedns", "smoke"])
+    @attr(tags=["advanced", "advancedns", "smoke"])
     def test_04_change_offering_small(self):
         """Change Offering to a small capacity
         """
 
         # Validate the following
         # 1. Log in to the Vm .We should see that the CPU and memory Info of
-        #    this Vm matches the one specified for "Small" service offering. 
-        # 2. Using  listVM command verify that this Vm 
+        #    this Vm matches the one specified for "Small" service offering.
+        # 2. Using  listVM command verify that this Vm
         #    has Small service offering Id.
 
         self.debug("Stopping VM - ID: %s" % self.medium_virtual_machine.id)
@@ -533,11 +533,11 @@ class TestVMLifeCycle(cloudstackTestCase):
         cpuinfo = ssh.execute("cat /proc/cpuinfo")
 
         cpu_cnt = len([i for i in cpuinfo if "processor" in i])
-        #'cpu MHz\t\t: 2660.499'
+        # 'cpu MHz\t\t: 2660.499'
         cpu_speed = [i for i in cpuinfo if "cpu MHz" in i ][0].split()[3]
 
         meminfo = ssh.execute("cat /proc/meminfo")
-        #MemTotal:        1017464 kB
+        # MemTotal:        1017464 kB
         total_mem = [i for i in meminfo if "MemTotal" in i][0].split()[1]
 
         self.debug(
@@ -557,21 +557,19 @@ class TestVMLifeCycle(cloudstackTestCase):
                             self.small_offering.cpuspeed,
                             "Check CPU Speed for small offering"
                         )
-        self.assertAlmostEqual(
-                            int(total_mem) / 1024, # In MBs
-                            self.small_offering.memory,
-                            "Check Memory(kb) for small offering"
-                        )
+        diff = self.small_offering.memory - int(total_mem) / 1024
+        self.assertLessEqual(diff, 50,
+                             "Check Memory(kb) for small offering")
         return
 
-    @attr(tags = ["advanced", "advancedns", "smoke"])
+    @attr(tags=["advanced", "advancedns", "smoke"])
     def test_05_change_offering_medium(self):
         """Change Offering to a medium capacity
         """
         # Validate the following
         # 1. Log in to the Vm .We should see that the CPU and memory Info of
-        #    this Vm matches the one specified for "Medium" service offering. 
-        # 2. Using  listVM command verify that this Vm 
+        #    this Vm matches the one specified for "Medium" service offering.
+        # 2. Using  listVM command verify that this Vm
         #    has Medium service offering Id.
 
         self.debug("Stopping VM - ID: %s" % self.small_virtual_machine.id)
@@ -654,11 +652,11 @@ class TestVMLifeCycle(cloudstackTestCase):
         cpuinfo = ssh_client.execute("cat /proc/cpuinfo")
 
         cpu_cnt = len([i for i in cpuinfo if "processor" in i])
-        #'cpu MHz\t\t: 2660.499'
+        # 'cpu MHz\t\t: 2660.499'
         cpu_speed = [i for i in cpuinfo if "cpu MHz" in i][0].split()[3]
 
         meminfo = ssh_client.execute("cat /proc/meminfo")
-        #MemTotal:        1017464 kB
+        # MemTotal:        1017464 kB
         total_mem = [i for i in meminfo if "MemTotal" in i][0].split()[1]
 
         self.debug(
@@ -679,14 +677,12 @@ class TestVMLifeCycle(cloudstackTestCase):
                             "Check CPU Speed for medium offering"
                         )
 
-        self.assertAlmostEqual(
-                            int(total_mem) / 1024, # In MBs
-                            self.medium_offering.memory,
-                            "Check Memory(kb) for medium offering"
-                        )
+        diff = self.medium_offering.memory - int(total_mem) / 1024
+        self.assertLessEqual(diff, 50,
+                             "Check Memory(kb) for small offering")
         return
 
-    @attr(tags = ["devcloud", "advanced", "advancedns", "smoke", "basic", "sg"])
+    @attr(tags=["devcloud", "advanced", "advancedns", "smoke", "basic", "sg"])
     def test_06_destroy_vm(self):
         """Test destroy Virtual Machine
         """
@@ -722,7 +718,7 @@ class TestVMLifeCycle(cloudstackTestCase):
                         )
         return
 
-    @attr(tags = ["devcloud", "advanced", "advancedns", "smoke", "basic", "sg"])
+    @attr(tags=["devcloud", "advanced", "advancedns", "smoke", "basic", "sg"])
     def test_07_restore_vm(self):
         """Test recover Virtual Machine
         """
@@ -762,14 +758,14 @@ class TestVMLifeCycle(cloudstackTestCase):
 
         return
 
-    @attr(tags = ["advanced", "advancedns", "smoke", "basic", "sg", "multihost"])
+    @attr(tags=["advanced", "advancedns", "smoke", "basic", "sg", "multihost"])
     def test_08_migrate_vm(self):
         """Test migrate VM
         """
         # Validate the following
         # 1. Should be able to login to the VM.
         # 2. listVM command should return this VM.State of this VM
-        #    should be "Running" and the host should be the host 
+        #    should be "Running" and the host should be the host
         #    to which the VM was migrated to
 
         hosts = Host.list(
@@ -833,9 +829,9 @@ class TestVMLifeCycle(cloudstackTestCase):
                         )
         return
 
-    @attr(configuration = "expunge.interval")
-    @attr(configuration = "expunge.delay")
-    @attr(tags = ["devcloud", "advanced", "advancedns", "smoke", "basic", "sg"])
+    @attr(configuration="expunge.interval")
+    @attr(configuration="expunge.delay")
+    @attr(tags=["devcloud", "advanced", "advancedns", "smoke", "basic", "sg"])
     def test_09_expunge_vm(self):
         """Test destroy(expunge) Virtual Machine
         """
@@ -856,8 +852,8 @@ class TestVMLifeCycle(cloudstackTestCase):
         expunge_delay = int(config[0].value)
         time.sleep(expunge_delay * 2)
 
-        #VM should be destroyed unless expunge thread hasn't run
-        #Wait for two cycles of the expunge thread
+        # VM should be destroyed unless expunge thread hasn't run
+        # Wait for two cycles of the expunge thread
         config = list_configurations(
                                      self.apiclient,
                                      name='expunge.interval'
@@ -882,7 +878,7 @@ class TestVMLifeCycle(cloudstackTestCase):
                     )
         return
 
-    @attr(tags = ["advanced", "advancedns", "smoke", "basic", "sg"])
+    @attr(tags=["advanced", "advancedns", "smoke", "basic", "sg"])
     def test_10_attachAndDetach_iso(self):
         """Test for detach ISO to virtual machine"""
 
@@ -912,11 +908,15 @@ class TestVMLifeCycle(cloudstackTestCase):
                                                     iso.id,
                                                     self.virtual_machine.id
                                                     ))
-        #Attach ISO to virtual machine
+        # Attach ISO to virtual machine
         cmd = attachIso.attachIsoCmd()
         cmd.id = iso.id
         cmd.virtualmachineid = self.virtual_machine.id
         self.apiclient.attachIso(cmd)
+
+        hosts = list_hosts(self.apiclient)
+        if hosts[0].hypervisor != "XenServer":
+            self.services["diskdevice"] = '/dev/cdrom'
 
         try:
             ssh_client = self.virtual_machine.get_ssh_client()
@@ -937,14 +937,14 @@ class TestVMLifeCycle(cloudstackTestCase):
 
                 c = "fdisk -l|grep %s|head -1" % self.services["diskdevice"]
                 res = ssh_client.execute(c)
-                #Disk /dev/xvdd: 4393 MB, 4393723904 bytes
+                # Disk /dev/xvdd: 4393 MB, 4393723904 bytes
 
         except Exception as e:
             self.fail("SSH failed for virtual machine: %s - %s" %
                                 (self.virtual_machine.ipaddress, e))
 
         # Res may contain more than one strings depending on environment
-        # Split strings to form new list which is used for assertion on ISO size 
+        # Split strings to form new list which is used for assertion on ISO size
         result = []
         for i in res:
             for k in i.split():
@@ -968,7 +968,7 @@ class TestVMLifeCycle(cloudstackTestCase):
                          "Check size of the attached ISO"
                          )
         try:
-            #Unmount ISO
+            # Unmount ISO
             command = "umount %s" % self.services["mount_dir"]
             ssh_client.execute(command)
 
@@ -976,7 +976,7 @@ class TestVMLifeCycle(cloudstackTestCase):
             self.fail("SSH failed for virtual machine: %s - %s" %
                                 (self.virtual_machine.ipaddress, e))
 
-        #Detach from VM
+        # Detach from VM
         cmd = detachIso.detachIsoCmd()
         cmd.virtualmachineid = self.virtual_machine.id
         self.apiclient.detachIso(cmd)
@@ -1041,7 +1041,7 @@ class TestVMPasswordEnabled(cloudstackTestCase):
                                         serviceofferingid=cls.small_offering.id,
                                         mode=cls.services["mode"]
                                         )
-        #Stop virtual machine
+        # Stop virtual machine
         cls.virtual_machine.stop(cls.api_client)
 
         # Poll listVM to ensure VM is stopped properly
@@ -1082,7 +1082,7 @@ class TestVMPasswordEnabled(cloudstackTestCase):
                                                     cls.virtual_machine.id)
 
         cls.services["template"]["ostype"] = cls.services["ostype"]
-        #Create templates for Edit, Delete & update permissions testcases
+        # Create templates for Edit, Delete & update permissions testcases
         cls.pw_enabled_template = Template.create(
                                          cls.api_client,
                                          cls.services["template"],
@@ -1120,11 +1120,11 @@ class TestVMPasswordEnabled(cloudstackTestCase):
         self.cleanup = []
 
     def tearDown(self):
-        #Clean up, terminate the created instances
+        # Clean up, terminate the created instances
         cleanup_resources(self.apiclient, self.cleanup)
         return
 
-    @attr(tags = ["advanced", "advancedns", "smoke", "basic", "sg"])
+    @attr(tags=["advanced", "advancedns", "smoke", "basic", "sg"])
     def test_11_get_vm_password(self):
         """Test get VM password for password enabled template"""
 

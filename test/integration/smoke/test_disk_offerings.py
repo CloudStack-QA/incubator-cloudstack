@@ -5,9 +5,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -16,7 +16,7 @@
 # under the License.
 """ BVT tests for Disk offerings"""
 
-#Import Local Modules
+# Import Local Modules
 import marvin
 from marvin.cloudstackTestCase import *
 from marvin.cloudstackAPI import *
@@ -27,6 +27,7 @@ from nose.plugins.attrib import attr
 
 _multiprocess_shared_ = True
 
+
 class Services:
     """Test Disk offerings Services
     """
@@ -36,9 +37,10 @@ class Services:
                          "off": {
                                         "name": "Disk offering",
                                         "displaytext": "Disk offering",
-                                        "disksize": 1   # in GB
+                                        "disksize": 1    # in GB
                                 },
                          }
+
 
 class TestCreateDiskOffering(cloudstackTestCase):
 
@@ -51,14 +53,14 @@ class TestCreateDiskOffering(cloudstackTestCase):
 
     def tearDown(self):
         try:
-            #Clean up, terminate the created templates
+            # Clean up, terminate the created templates
             cleanup_resources(self.apiclient, self.cleanup)
 
         except Exception as e:
             raise Exception("Warning: Exception during cleanup : %s" % e)
         return
 
-    @attr(tags = ["advanced", "basic", "eip", "sg", "advancedns", "simulator", "smoke"])
+    @attr(tags=["advanced", "basic", "eip", "sg", "advancedns", "simulator", "smoke"])
     def test_01_create_disk_offering(self):
         """Test to create disk offering"""
 
@@ -113,7 +115,7 @@ class TestDiskOfferings(cloudstackTestCase):
     def tearDown(self):
 
         try:
-            #Clean up, terminate the created templates
+            # Clean up, terminate the created templates
             cleanup_resources(self.apiclient, self.cleanup)
 
         except Exception as e:
@@ -144,7 +146,7 @@ class TestDiskOfferings(cloudstackTestCase):
             raise Exception("Warning: Exception during cleanup : %s" % e)
         return
 
-    @attr(tags = ["advanced", "basic", "eip", "sg", "advancedns", "simulator", "smoke"])
+    @attr(tags=["advanced", "basic", "eip", "sg", "advancedns", "simulator", "smoke"])
     def test_02_edit_disk_offering(self):
         """Test to update existing disk offering"""
 
@@ -152,13 +154,13 @@ class TestDiskOfferings(cloudstackTestCase):
         # 1. updateDiskOffering should return
         #    a valid information for newly created offering
 
-        #Generate new name & displaytext from random data
+        # Generate new name & displaytext from random data
         random_displaytext = random_gen()
         random_name = random_gen()
 
-        self.debug("Updating Disk offering with ID: %s" % 
+        self.debug("Updating Disk offering with ID: %s" %
                                     self.disk_offering_1.id)
-        
+
         cmd = updateDiskOffering.updateDiskOfferingCmd()
         cmd.id = self.disk_offering_1.id
         cmd.displaytext = random_displaytext
@@ -195,7 +197,7 @@ class TestDiskOfferings(cloudstackTestCase):
                         )
         return
 
-    @attr(tags = ["advanced", "basic", "eip", "sg", "advancedns", "simulator", "smoke"])
+    @attr(tags=["advanced", "basic", "eip", "sg", "advancedns", "simulator", "smoke"])
     def test_03_delete_disk_offering(self):
         """Test to delete disk offering"""
 
@@ -205,7 +207,7 @@ class TestDiskOfferings(cloudstackTestCase):
 
         self.disk_offering_2.delete(self.apiclient)
 
-        self.debug("Deleted Disk offering with ID: %s" % 
+        self.debug("Deleted Disk offering with ID: %s" %
                                     self.disk_offering_2.id)
         list_disk_response = list_disk_offering(
                                                 self.apiclient,
