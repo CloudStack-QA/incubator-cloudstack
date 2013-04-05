@@ -225,9 +225,10 @@ class VirtualMachine:
 
     @classmethod
     def create(cls, apiclient, services, templateid=None, accountid=None,
-                    domainid=None, zoneid=None, networkids=None, serviceofferingid=None,
-                    securitygroupids=None, projectid=None, startvm=None,
-                    diskofferingid=None, keypair=None, hostid=None, mode='basic'):
+                domainid=None, zoneid=None, networkids=None,
+                serviceofferingid=None, securitygroupids=None, projectid=None,
+                startvm=None, diskofferingid=None, keypair=None, hostid=None,
+                group=None, mode='basic'):
         """Create the instance"""
 
         cmd = deployVirtualMachine.deployVirtualMachineCmd()
@@ -294,6 +295,8 @@ class VirtualMachine:
         if hostid:
             cmd.hostid = hostid
 
+        if group:
+            cmd.group = group
         virtual_machine = apiclient.deployVirtualMachine(cmd)
 
         if startvm == False:
@@ -448,7 +451,7 @@ class VirtualMachine:
 
     def add_nic(self, apiclient, networkId):
         """Add a NIC to a VM"""
-        cmd = addNicToVirtualMachine.addNicToVirtualMachineCmd();
+        cmd = addNicToVirtualMachine.addNicToVirtualMachineCmd()
         cmd.virtualmachineid = self.id
         cmd.networkid = networkId
         return apiclient.addNicToVirtualMachine(cmd)
@@ -509,7 +512,7 @@ class VirtualMachine:
 
 
 class Volume:
-    """Manage Volume Lifecycle
+    """Manage Volume Life cycle
     """
     def __init__(self, items):
         self.__dict__.update(items)
@@ -605,7 +608,7 @@ class Volume:
         [setattr(cmd, k, v) for k, v in kwargs.items()]
         return(apiclient.listVolumes(cmd))
 
-    def resize(cls, apiclient, **kwargs):
+    def resize(self, apiclient, **kwargs):
         """Resize a volume"""
         cmd = resizeVolume.resizeVolumeCmd()
         cmd.id = self.id
@@ -1055,7 +1058,7 @@ class NATRule:
 
     @classmethod
     def create(cls, apiclient, virtual_machine, services, ipaddressid=None,
-                projectid=None, openfirewall=False, networkid=None, vpcid=None):
+               projectid=None, openfirewall=False, networkid=None, vpcid=None):
         """Create Port forwarding rule"""
         cmd = createPortForwardingRule.createPortForwardingRuleCmd()
 
@@ -2829,3 +2832,88 @@ class Alert:
         cmd = listAlerts.listAlertsCmd()
         [setattr(cmd, k, v) for k, v in kwargs.items()]
         return(apiclient.listAlerts(cmd))
+
+
+class InstanceGroup:
+    """Manage VM instance groups"""
+
+    def __init__(self, items, services):
+        self.__dict__.update(items)
+
+    @classmethod
+    def create(cls, apiclient, name=None, account=None, domainid=None,
+               projectid=None, networkid=None, rand_name=True):
+        """Creates instance groups"""
+
+        cmd = createInstanceGroup.createInstanceGroupCmd()
+        cmd.name = "-".join([name, random_gen()]) if rand_name else name
+        if account is not None:
+            cmd.account = account
+        if domainid is not None:
+            cmd.domainid = domainid
+        if projectid is not None:
+            cmd.projectid = projectid
+        if networkid is not None:
+            cmd.networkid = networkid
+        return (apiclient.createInstanceGroup(cmd))
+
+    def delete(self, apiclient):
+        """Delete instance group"""
+        cmd = deleteInstanceGroup.deleteInstanceGroupCmd()
+        cmd.id = self.id
+        apiclient.deleteInstanceGroup(cmd)
+
+    def update(self, apiclient, **kwargs):
+        """Updates the instance groups"""
+        cmd = updateInstanceGroup.updateInstanceGroupCmd()
+        [setattr(cmd, k, v) for k, v in kwargs.items()]
+        return (apiclient.updateInstanceGroup(cmd))
+
+    @classmethod
+    def list(cls, apiclient, **kwargs):
+        """List all instance groups"""
+        cmd = listInstanceGroups.listInstanceGroupsCmd()
+        [setattr(cmd, k, v) for k, v in kwargs.items()]
+        return (apiclient.listInstanceGroups(cmd))
+
+    def startInstances(self, apiclient):
+        """Starts all instances in a VM tier"""
+
+        cmd = startVirtualMachine.startVirtualMachineCmd()
+        cmd.group = self.id
+        return apiclient.startVirtualMachine(cmd)
+
+    def stopInstances(self, apiclient):
+        """Stops all instances in a VM tier"""
+
+        cmd = stopVirtualMachine.stopVirtualMachineCmd()
+        cmd.group = self.id
+        return apiclient.stopVirtualMachine(cmd)
+
+    def rebootInstances(self, apiclient):
+        """Reboot all instances in a VM tier"""
+
+        cmd = rebootVirtualMachine.rebootVirtualMachineCmd()
+        cmd.group = self.id
+        return apiclient.rebootVirtualMachine(cmd)
+
+    def deleteInstances(self, apiclient):
+        """Stops all instances in a VM tier"""
+
+        cmd = destroyVirtualMachine.destroyVirtualMachineCmd()
+        cmd.group = self.id
+        return apiclient.destroyVirtualMachine(cmd)
+
+    def changeServiceOffering(self, apiclient, serviceOfferingId):
+        """Change service offering of the vm tier"""
+
+        cmd = changeServiceForVirtualMachine.changeServiceForVirtualMachineCmd()
+        cmd.group = self.id
+        cmd.serviceofferingid = serviceOfferingId
+        return apiclient.changeServiceForVirtualMachine(cmd)
+
+    def recoverInstances(self, apiclient):
+        """Recover the instances from vm tier"""
+        cmd = recoverVirtualMachine.recoverVirtualMachineCmd()
+        cmd.group = self.id
+        apiclient.recoverVirtualMachine(cmd)
