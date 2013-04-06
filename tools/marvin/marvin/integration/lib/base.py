@@ -1741,7 +1741,8 @@ class Network:
 
     @classmethod
     def create(cls, apiclient, services, accountid=None, domainid=None,
-               networkofferingid=None, projectid=None, zoneid=None,
+               networkofferingid=None, projectid=None, 
+               subdomainaccess=None, zoneid=None,
                gateway=None, netmask=None, vpcid=None, guestcidr=None):
         """Create Network for account"""
         cmd = createNetwork.createNetworkCmd()
@@ -1757,6 +1758,9 @@ class Network:
             cmd.zoneid = zoneid
         elif "zoneid" in services:
             cmd.zoneid = services["zoneid"]
+
+        if subdomainaccess is not None:
+            cmd.subdomainaccess = subdomainaccess
 
         if gateway:
             cmd.gateway = gateway
@@ -2837,7 +2841,7 @@ class Alert:
 class InstanceGroup:
     """Manage VM instance groups"""
 
-    def __init__(self, items, services):
+    def __init__(self, items):
         self.__dict__.update(items)
 
     @classmethod
@@ -2855,7 +2859,7 @@ class InstanceGroup:
             cmd.projectid = projectid
         if networkid is not None:
             cmd.networkid = networkid
-        return (apiclient.createInstanceGroup(cmd))
+        return InstanceGroup(apiclient.createInstanceGroup(cmd).__dict__)
 
     def delete(self, apiclient):
         """Delete instance group"""
@@ -2866,6 +2870,7 @@ class InstanceGroup:
     def update(self, apiclient, **kwargs):
         """Updates the instance groups"""
         cmd = updateInstanceGroup.updateInstanceGroupCmd()
+        cmd.id = self.id
         [setattr(cmd, k, v) for k, v in kwargs.items()]
         return (apiclient.updateInstanceGroup(cmd))
 

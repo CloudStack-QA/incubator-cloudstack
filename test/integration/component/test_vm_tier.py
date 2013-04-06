@@ -32,7 +32,7 @@ class Services:
                                     "email": "test@test.com",
                                     "firstname": "Test",
                                     "lastname": "User",
-                                    "username": "test",
+                                    "username": "vmtier",
                                     # Random characters are appended for unique
                                     # username
                                     "password": "password",
@@ -136,7 +136,7 @@ class Services:
                                 "displaytext": "TestVPC",
                                 "cidr": '10.0.0.1/24'
                                 },
-                        "ostype": 'CentOS 5.5 (64-bit)',
+                        "ostype": 'CentOS 5.3 (64-bit)',
                         "sleep": 60,
                         "timeout": 10,
                         "mode": 'advanced',
@@ -400,14 +400,13 @@ class TestVMTier(cloudstackTestCase):
         except Exception as e:
             self.fail("Failed to delete VM tier: %s" % e)
 
-        # TODO: Verify exception or None
         self.debug("Validating VM tier delete using list instance group")
-        with self.assertRaises(Exception):
-            InstanceGroup.list(self.apiclient, id=vm_tier.id)
+        vm_tiers = InstanceGroup.list(self.apiclient, id=vm_tier.id)
+        self.assertEqual(vm_tiers, None, "List VM tiers should not response")
         return
 
     @attr(tags=["advanced", "advancedns"])
-    @unittest.skip("Skip")
+    @unittest.skip("Tested")
     def test_02_add_vms_to_vmtier(self):
         """Test add VMs to the vmtier"""
 
