@@ -18,6 +18,7 @@ package com.cloud.network;
 
 import java.util.List;
 
+import com.cloud.utils.Pair;
 import org.apache.cloudstack.api.Identity;
 import org.apache.cloudstack.api.InternalIdentity;
 
@@ -36,7 +37,8 @@ public interface PhysicalNetwork extends Identity, InternalIdentity {
         L3,
         GRE,
         STT,
-        VNS;
+        VNS,
+        MIDO;
     }
 
     public enum BroadcastDomainRange {
@@ -58,7 +60,9 @@ public interface PhysicalNetwork extends Identity, InternalIdentity {
 
     Long getDomainId();
 
-    String getVnet();
+    List<Pair<Integer,Integer>> getVnet();
+
+    String getVnetString();
 
     String getSpeed();
 

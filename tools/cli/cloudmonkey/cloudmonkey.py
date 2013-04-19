@@ -27,10 +27,12 @@ try:
     import shlex
     import sys
     import types
+    import copy
 
     from cachemaker import loadcache, savecache, monkeycache, splitverbsubject
-    from config import __version__, cache_file
-    from config import read_config, write_config
+    from config import __version__, __description__, __projecturl__
+    from config import read_config, write_config, config_file
+    from optparse import OptionParser
     from prettytable import PrettyTable
     from printer import monkeyprint
     from requester import monkeyrequest
@@ -63,13 +65,14 @@ class CloudMonkeyShell(cmd.Cmd, object):
     intro = ("☁ Apache CloudStack 🐵 cloudmonkey " + __version__ +
              ". Type help or ? to list commands.\n")
     ruler = "="
-    cache_file = cache_file
     config_options = []
     verbs = []
 
-    def __init__(self, pname):
+    def __init__(self, pname, cfile):
         self.program_name = pname
-        self.config_options = read_config(self.get_attr, self.set_attr)
+        self.config_file = cfile
+        self.config_options = read_config(self.get_attr, self.set_attr,
+                                          self.config_file)
         self.loadcache()
         self.prompt = self.prompt.strip() + " "  # Cosmetic fix for prompt
 
@@ -160,6 +163,40 @@ class CloudMonkeyShell(cmd.Cmd, object):
                 self.monkeyprint(printer)
             return PrettyTable(toprow)
 
+        def print_result_json(result, result_filter=None):
+            tfilter = {}  # temp var to hold a dict of the filters
+            tresult = copy.deepcopy(result)  # dupe the result to filter
+            if result_filter is not None:
+                for res in result_filter:
+                    tfilter[res] = 1
+                myresults = {}
+                for okey, oval in result.iteritems():
+                    if isinstance(oval, dict):
+                        for tkey in x:
+                            if tkey not in tfilter:
+                                try:
+                                    del(tresult[okey][x][tkey])
+                                except:
+                                    pass
+                    elif isinstance(oval, list):
+                        for x in range(len(oval)):
+                            if isinstance(oval[x], dict):
+                                for tkey in oval[x]:
+                                    if tkey not in tfilter:
+                                        try:
+                                            del(tresult[okey][x][tkey])
+                                        except:
+                                            pass
+                            else:
+                                try:
+                                    del(tresult[okey][x])
+                                except:
+                                    pass
+            print json.dumps(tresult,
+                             sort_keys=True,
+                             indent=2,
+                             separators=(',', ': '))
+
         def print_result_tabular(result, result_filter=None):
             toprow = None
             printer = None
@@ -181,6 +218,10 @@ class CloudMonkeyShell(cmd.Cmd, object):
                 self.monkeyprint(printer)
 
         def print_result_as_dict(result, result_filter=None):
+            if self.display == "json":
+                print_result_json(result, result_filter)
+                return
+
             for key in sorted(result.keys(), key=lambda x:
                               x not in ['id', 'count', 'name'] and x):
                 if not (isinstance(result[key], list) or
@@ -192,8 +233,7 @@ class CloudMonkeyShell(cmd.Cmd, object):
 
         def print_result_as_list(result, result_filter=None):
             for node in result:
-                # Tabular print if it's a list of dict and tabularize is true
-                if isinstance(node, dict) and self.tabularize == 'true':
+                if isinstance(node, dict) and self.display == 'table':
                     print_result_tabular(result, result_filter)
                     break
                 self.print_result(node)
@@ -316,7 +356,8 @@ class CloudMonkeyShell(cmd.Cmd, object):
                     autocompletions = uuids
                     search_string = value
 
-        if self.tabularize == "true" and subject != "":
+        if subject != "" and (self.display == "table" or
+                              self.display == "json"):
             autocompletions.append("filter=")
         return [s for s in autocompletions if s.startswith(search_string)]
 
@@ -364,7 +405,7 @@ class CloudMonkeyShell(cmd.Cmd, object):
         key, value = (args[0], args[2])
         setattr(self, key, value)  # keys and attributes should have same names
         self.prompt = self.prompt.strip() + " "  # prompt fix
-        write_config(self.get_attr)
+        write_config(self.get_attr, self.config_file)
 
     def complete_set(self, text, line, begidx, endidx):
         mline = line.partition(" ")[2]
@@ -458,10 +499,38 @@ class CloudMonkeyShell(cmd.Cmd, object):
         return self.do_EOF(args)
 
 
+class MonkeyParser(OptionParser):
+    def format_help(self, formatter=None):
+        if formatter is None:
+            formatter = self.formatter
+        result = []
+        if self.usage:
+            result.append("Usage: cloudmonkey [options] [cmds] [params]\n\n")
+        if self.description:
+            result.append(self.format_description(formatter) + "\n")
+        result.append(self.format_option_help(formatter))
+        result.append("\nTry cloudmonkey [help|?]\n")
+        return "".join(result)
+
+
 def main():
-    shell = CloudMonkeyShell(sys.argv[0])
-    if len(sys.argv) > 1:
-        shell.onecmd(' '.join(sys.argv[1:]))
+    parser = MonkeyParser()
+    parser.add_option("-c", "--config-file",
+                      dest="cfile", default=config_file,
+                      help="config file for cloudmonkey", metavar="FILE")
+    parser.add_option("-v", "--version",
+                      action="store_true", dest="version", default=False,
+                      help="prints cloudmonkey version information")
+
+    (options, args) = parser.parse_args()
+    if options.version:
+        print "cloudmonkey", __version__
+        print __description__, "(%s)" % __projecturl__
+        sys.exit(0)
+
+    shell = CloudMonkeyShell(sys.argv[0], options.cfile)
+    if len(args) > 0:
+        shell.onecmd(' '.join(args))
     else:
         shell.cmdloop()
 

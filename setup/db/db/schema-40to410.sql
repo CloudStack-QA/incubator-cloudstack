@@ -261,17 +261,7 @@ CREATE TABLE  `cloud`.`region` (
   PRIMARY KEY  (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-INSERT INTO `cloud`.`region` values ('1','Local','http://localhost:8080/client/api');
-
-INSERT IGNORE INTO `cloud`.`configuration` VALUES ('Account Defaults', 'DEFAULT', 'management-server', 'max.account.cpus', '40', 'The default maximum number of cpu cores that can be used for an account');
-
-INSERT IGNORE INTO `cloud`.`configuration` VALUES ('Account Defaults', 'DEFAULT', 'management-server', 'max.account.memory', '40960', 'The default maximum memory (in MB) that can be used for an account');
-
-INSERT IGNORE INTO `cloud`.`configuration` VALUES ('Project Defaults', 'DEFAULT', 'management-server', 'max.project.cpus', '40', 'The default maximum number of cpu cores that can be used for a project');
-
-INSERT IGNORE INTO `cloud`.`configuration` VALUES ('Project Defaults', 'DEFAULT', 'management-server', 'max.project.memory', '40960', 'The default maximum memory (in MB) that can be used for a project');
-
-ALTER TABLE `cloud_usage`.`account` ADD COLUMN `region_id` int unsigned NOT NULL DEFAULT '1';
+INSERT INTO `cloud`.`region` values ('1','Local','http://localhost:8080/client/');
 
 CREATE TABLE `cloud`.`nicira_nvp_router_map` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'id',
@@ -414,35 +404,6 @@ INSERT INTO `cloud`.`counter` (id, uuid, source, name, value,created) VALUES (1,
 INSERT INTO `cloud`.`counter` (id, uuid, source, name, value,created) VALUES (2, UUID(), 'snmp','Linux System CPU - percentage', '1.3.6.1.4.1.2021.11.10.0', now());
 INSERT INTO `cloud`.`counter` (id, uuid, source, name, value,created) VALUES (3, UUID(), 'snmp','Linux CPU Idle - percentage', '1.3.6.1.4.1.2021.11.11.0', now());
 INSERT INTO `cloud`.`counter` (id, uuid, source, name, value,created) VALUES (100, UUID(), 'netscaler','Response Time - microseconds', 'RESPTIME', now());
-CREATE TABLE `cloud`.`vm_snapshots` (
-  `id` bigint(20) unsigned NOT NULL auto_increment COMMENT 'Primary Key',
-  `uuid` varchar(40) NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `display_name` varchar(255) default NULL,
-  `description` varchar(255) default NULL,
-  `vm_id` bigint(20) unsigned NOT NULL,
-  `account_id` bigint(20) unsigned NOT NULL,
-  `domain_id` bigint(20) unsigned NOT NULL,
-  `vm_snapshot_type` varchar(32) default NULL,
-  `state` varchar(32) NOT NULL,
-  `parent` bigint unsigned default NULL,
-  `current` int(1) unsigned default NULL,
-  `update_count` bigint unsigned NOT NULL DEFAULT 0,
-  `updated` datetime default NULL,
-  `created` datetime default NULL,
-  `removed` datetime default NULL,
-  PRIMARY KEY  (`id`),
-  CONSTRAINT UNIQUE KEY `uc_vm_snapshots_uuid` (`uuid`),
-  INDEX `vm_snapshots_name` (`name`),
-  INDEX `vm_snapshots_vm_id` (`vm_id`),
-  INDEX `vm_snapshots_account_id` (`account_id`),
-  INDEX `vm_snapshots_display_name` (`display_name`),
-  INDEX `vm_snapshots_removed` (`removed`),
-  INDEX `vm_snapshots_parent` (`parent`),
-  CONSTRAINT `fk_vm_snapshots_vm_id__vm_instance_id` FOREIGN KEY `fk_vm_snapshots_vm_id__vm_instance_id` (`vm_id`) REFERENCES `vm_instance` (`id`),
-  CONSTRAINT `fk_vm_snapshots_account_id__account_id` FOREIGN KEY `fk_vm_snapshots_account_id__account_id` (`account_id`) REFERENCES `account` (`id`),
-  CONSTRAINT `fk_vm_snapshots_domain_id__domain_id` FOREIGN KEY `fk_vm_snapshots_domain_id__domain_id` (`domain_id`) REFERENCES `domain` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 CREATE TABLE  `cloud`.`user_ipv6_address` (
   `id` bigint unsigned NOT NULL UNIQUE auto_increment,
@@ -572,6 +533,7 @@ CREATE VIEW `cloud`.`user_vm_view` AS
         vpc.id vpc_id,
         vpc.uuid vpc_uuid,
         networks.uuid network_uuid,
+        networks.name network_name,
         networks.traffic_type traffic_type,
         networks.guest_type guest_type,
         user_ip_address.id public_ip_id,
@@ -750,7 +712,7 @@ CREATE VIEW `cloud`.`domain_router_view` AS
             left join
         `cloud`.`networks` ON nics.network_id = networks.id
             left join
-        `cloud`.`vpc` ON networks.vpc_id = vpc.id
+        `cloud`.`vpc` ON domain_router.vpc_id = vpc.id
             left join
         `cloud`.`async_job` ON async_job.instance_id = vm_instance.id
             and async_job.instance_type = 'DomainRouter'
@@ -1292,10 +1254,6 @@ CREATE VIEW `cloud`.`account_view` AS
         projectcount.count projectTotal,
         networklimit.max networkLimit,
         networkcount.count networkTotal,
-        cpulimit.max cpuLimit,
-        cpucount.count cpuTotal,
-        memorylimit.max memoryLimit,
-        memorycount.count memoryTotal,
         async_job.id job_id,
         async_job.uuid job_uuid,
         async_job.job_status job_status,
@@ -1363,18 +1321,6 @@ CREATE VIEW `cloud`.`account_view` AS
             left join
         `cloud`.`resource_count` networkcount ON account.id = networkcount.account_id
             and networkcount.type = 'network'
-            left join
-        `cloud`.`resource_limit` cpulimit ON account.id = cpulimit.account_id
-            and cpulimit.type = 'cpu'
-            left join
-        `cloud`.`resource_count` cpucount ON account.id = cpucount.account_id
-            and cpucount.type = 'cpu'
-            left join
-        `cloud`.`resource_limit` memorylimit ON account.id = memorylimit.account_id
-            and memorylimit.type = 'memory'
-            left join
-        `cloud`.`resource_count` memorycount ON account.id = memorycount.account_id
-            and memorycount.type = 'memory'
             left join
         `cloud`.`async_job` ON async_job.instance_id = account.id
             and async_job.instance_type = 'Account'
@@ -1502,6 +1448,7 @@ CREATE VIEW `cloud`.`storage_pool_view` AS
         storage_pool.created,
         storage_pool.removed,
         storage_pool.capacity_bytes,
+        storage_pool.scope,
         cluster.id cluster_id,
         cluster.uuid cluster_uuid,
         cluster.name cluster_name,
@@ -1675,3 +1622,14 @@ CREATE TABLE `cloud`.`ucs_manager` (
 
 
 SET foreign_key_checks = 1;
+
+UPDATE `cloud`.`configuration` SET value='KVM,XenServer,VMware,Ovm' WHERE name='hypervisor.list';
+
+INSERT IGNORE INTO `cloud`.`configuration` VALUES ('Advanced', 'DEFAULT', 'management-server', 'concurrent.snapshots.threshold.perhost' , NULL, 'Limit number of snapshots that can be handled concurrently; default is NULL - unlimited.');
+INSERT IGNORE INTO `cloud`.`configuration` VALUES ('Network', 'DEFAULT', 'management-server', 'network.ipv6.search.retry.max' , 10000, 'The maximum number of retrying times to search for an available IPv6 address in the table');
+INSERT IGNORE INTO `cloud`.`configuration` VALUES ('Usage', 'DEFAULT', 'management-server', 'traffic.sentinel.exclude.zones' , '', 'Traffic going into specified list of zones is not metered');
+INSERT IGNORE INTO `cloud`.`configuration` VALUES ('Usage', 'DEFAULT', 'management-server', 'traffic.sentinel.include.zones' , 'EXTERNAL', 'Traffic going into specified list of zones is metered. For metering all traffic leave this parameter empty');
+
+
+INSERT IGNORE INTO `cloud`.`guest_os` (id, uuid, category_id, display_name) VALUES (163, UUID(), 10, 'Ubuntu 12.04 (32-bit)');
+INSERT IGNORE INTO `cloud`.`guest_os` (id, uuid, category_id, display_name) VALUES (164, UUID(), 10, 'Ubuntu 12.04 (64-bit)');

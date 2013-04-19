@@ -23,7 +23,7 @@ import logging
 from contextlib import closing
 
 class remoteSSHClient(object):
-    def __init__(self, host, port, user, passwd, retries=10, keyPairFileLocation=None):
+    def __init__(self, host, port, user, passwd, retries = 10, log_lvl=logging.INFO, keyPairFileLocation=None):
         self.host = host
         self.port = port
         self.user = user
@@ -33,7 +33,7 @@ class remoteSSHClient(object):
         self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         self.logger = logging.getLogger('sshClient')
         ch = logging.StreamHandler()
-        ch.setLevel(logging.DEBUG)
+        ch.setLevel(log_lvl)
         self.logger.addHandler(ch)
 
         retry_count = retries
@@ -41,7 +41,7 @@ class remoteSSHClient(object):
             try:
                 if keyPairFileLocation == None:
                     self.ssh.connect(str(host),int(port), user, passwd)
-                    self.logger.debug("connecting to server %s with user %s passwd %s"%(str(host), user, passwd))
+                    self.logger.debug("SSH connect: %s@%s with passwd %s"%(user, str(host), passwd))
                 else:
                     self.ssh.connect(
                                         hostname=str(host),
@@ -51,6 +51,7 @@ class remoteSSHClient(object):
                                         look_for_keys=False
                                     )
                     self.logger.debug("connecting to server %s with user %s key %s"%(str(host), user, keyPairFileLocation))
+                    self.logger.debug("SSH connect: %s@%s with passwd %s"%(user, str(host), passwd))
             except paramiko.SSHException, sshex:
                 if retry_count == 0:
                     raise cloudstackException.InvalidParameterException(repr(sshex))
@@ -63,7 +64,6 @@ class remoteSSHClient(object):
         
     def execute(self, command):
         stdin, stdout, stderr = self.ssh.exec_command(command)
-        self.logger.debug("sending command %s to host %s"%(command, str(self.host)))
         output = stdout.readlines()
         errors = stderr.readlines()
         results = []
@@ -75,7 +75,7 @@ class remoteSSHClient(object):
         else:
             for strOut in output:
                 results.append(strOut.rstrip())
-        self.logger.debug("command %s returned %s"%(command, results))
+        self.logger.debug("{Cmd: %s via Host: %s} {returns: %s}"%(command, str(self.host), results))
         return results
     
     def scp(self, srcFile, destPath):

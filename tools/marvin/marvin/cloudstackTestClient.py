@@ -24,14 +24,14 @@ import string
 import hashlib
 
 class cloudstackTestClient(object):
-    def __init__(self, mgtSvr=None, port=8096, user=None, passwd=None, apiKey = None, securityKey = None, asyncTimeout=3600, defaultWorkerThreads=10, logging=None):
-        self.connection = cloudstackConnection.cloudConnection(mgtSvr, port, user, passwd, apiKey, securityKey, asyncTimeout, logging)
+    def __init__(self, mgtSvr=None, port=8096, apiKey = None, securityKey = None, asyncTimeout=3600,
+                 defaultWorkerThreads=10, logging=None):
+        self.connection = cloudstackConnection.cloudConnection(mgtSvr, port, apiKey, securityKey, asyncTimeout, logging)
         self.apiClient = cloudstackAPIClient.CloudStackAPIClient(self.connection)
         self.dbConnection = None
         self.asyncJobMgr = None
         self.ssh = None
         self.defaultWorkerThreads = defaultWorkerThreads
-        
         
     def dbConfigure(self, host="localhost", port=3306, user='cloud', passwd='cloud', db='cloud'):
         self.dbConnection = dbConnection.dbConnection(host, port, user, passwd, db)
@@ -111,7 +111,8 @@ class cloudstackTestClient(object):
             apiKey = registerUserRes.apikey
             securityKey = registerUserRes.secretkey
         
-        newUserConnection = cloudstackConnection.cloudConnection(self.connection.mgtSvr, self.connection.port, self.connection.user, self.connection.passwd, apiKey, securityKey, self.connection.asyncTimeout, self.connection.logging)
+        newUserConnection = cloudstackConnection.cloudConnection(self.connection.mgtSvr, self.connection.port,
+            apiKey, securityKey, self.connection.asyncTimeout, self.connection.logging)
         self.userApiClient = cloudstackAPIClient.CloudStackAPIClient(newUserConnection)
         self.userApiClient.connection = newUserConnection
         return self.userApiClient
@@ -147,7 +148,8 @@ class cloudstackTestClient(object):
         if hasattr(self, "userApiClient"):
             return self.userApiClient
         return None
-    
+
+
     '''FixME, httplib has issue if more than one thread submitted'''
     def submitCmdsAndWait(self, cmds, workers=1):
         if self.asyncJobMgr is None:

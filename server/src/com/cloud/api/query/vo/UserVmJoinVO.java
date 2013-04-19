@@ -293,6 +293,9 @@ public class UserVmJoinVO extends BaseViewVO implements ControlledViewEntity {
     @Column(name="network_uuid")
     private String networkUuid;
 
+    @Column(name="network_name")
+    private String networkName;
+
     @Column(name="traffic_type")
     @Enumerated(value=EnumType.STRING)
     private TrafficType trafficType;
@@ -364,6 +367,18 @@ public class UserVmJoinVO extends BaseViewVO implements ControlledViewEntity {
 
     @Column(name="tag_customer")
     private String tagCustomer;
+
+    @Column(name = "affinity_group_id")
+    private long affinityGroupId;
+
+    @Column(name = "affinity_group_uuid")
+    private String affinityGroupUuid;
+
+    @Column(name = "affinity_group_name")
+    private String affinityGroupName;
+
+    @Column(name = "affinity_group_description")
+    private String affinityGroupDescription;
 
     transient String password;
 
@@ -1168,6 +1183,16 @@ public class UserVmJoinVO extends BaseViewVO implements ControlledViewEntity {
     }
 
 
+    public String getNetworkName() {
+        return networkName;
+    }
+
+
+    public void setNetworkName(String networkName) {
+        this.networkName = networkName;
+    }
+
+
     public TrafficType getTrafficType() {
         return trafficType;
     }
@@ -1658,4 +1683,29 @@ public class UserVmJoinVO extends BaseViewVO implements ControlledViewEntity {
 	public void setIp6Cidr(String ip6Cidr) {
 		this.ip6Cidr = ip6Cidr;
 	}
+
+
+    public long getAffinityGroupId() {
+        return affinityGroupId;
+    }
+
+
+
+    public String getAffinityGroupUuid() {
+        return affinityGroupUuid;
+    }
+
+
+
+    public String getAffinityGroupName() {
+        return affinityGroupName;
+    }
+
+
+
+    public String getAffinityGroupDescription() {
+        return affinityGroupDescription;
+    }
+
+
 }

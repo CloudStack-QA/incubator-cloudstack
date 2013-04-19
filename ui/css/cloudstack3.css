@@ -467,6 +467,13 @@ div.list-view div.toolbar div.section-switcher div.section-select label {
   opacity: 0.7;
 }
 
+.loading-overlay span {
+  display: block;
+  text-align: center;
+  margin: 155px 0 0 5px;
+  color: #4B4B4B;
+}
+
 .detail-view .ui-tabs-panel .loading-overlay {
   background-position: 50% 250px;
 }
@@ -1690,7 +1697,7 @@ div.list-view td.state.off span {
 }
 
 .detail-view .main-groups {
-  max-height: 455px;
+  max-height: 407px;
   overflow: auto;
   overflow-x: hidden;
   margin-right: 12px;
@@ -1745,6 +1752,10 @@ div.list-view td.state.off span {
   top: 9px;
   float: left;
   width: 245px;
+}
+
+.detail-group .main-groups table td.value > span select {
+  width: 100% !important;
 }
 
 .detail-group .main-groups table td.value .view-all {
@@ -4361,6 +4372,17 @@ Dialogs*/
   display: block;
   clear: both;
   font-size: 11px;
+  float: left;
+  height: 10px;
+  max-width: 287px;
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard.admin .dashboard-container.sub.alerts ul li p br {
+  display: none;
 }
 
 /*** User*/
@@ -11755,6 +11777,14 @@ div.ui-dialog div.autoscaler div.field-group div.form-container form div.form-it
   background-position: -100px -614px;
 }
 
+.addVlanRange .icon {
+  background-position: -168px -31px;
+}
+
+.addVlanRange:hover .icon {
+  background-position: -168px -613px;
+}
+
 .resize .icon,
 .updateResourceCount .icon {
   background-position: -167px -66px;
@@ -11780,7 +11810,8 @@ div.ui-dialog div.autoscaler div.field-group div.form-container form div.form-it
   background-position: -168px -31px;
 }
 
-.reset .icon {
+.reset .icon,
+.scaleUp .icon {
   background-position: -168px -31px;
 }
 
@@ -11789,7 +11820,8 @@ div.ui-dialog div.autoscaler div.field-group div.form-container form div.form-it
   background-position: -168px -613px;
 }
 
-.reset:hover .icon {
+.reset:hover .icon,
+.scaleUp:hover .icon {
   background-position: -168px -613px;
 }
 

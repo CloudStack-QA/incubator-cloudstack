@@ -338,11 +338,12 @@
               notification: function(args) {
                 return 'label.action.start.instance';
               },							
-							complete: function(args) {						  
+							complete: function(args) {
 								if(args.password != null) {
-									alert('Password of the VM is ' + args.password);
+									return 'Password of the VM is ' + args.password;
 								}
-								return 'label.action.start.instance';
+
+								return false;
 							}			
             },
             notification: {
@@ -1079,6 +1080,75 @@
             }
           },
 
+          scaleUp:{
+            label:'scaleUp VM',
+            createForm:{
+              title:'Scale UP Virtual Machine',
+              label:'Scale UP Virtual Machine',
+              fields:{
+                  serviceOffering: {
+                  label: 'label.compute.offering',
+                  select: function(args) {
+                    $.ajax({
+                      url: createURL("listServiceOfferings&VirtualMachineId=" + args.context.instances[0].id),
+                      dataType: "json",
+                      async: true,
+                      success: function(json) {
+                        var serviceofferings = json.listserviceofferingsresponse.serviceoffering;
+                        var items = [];
+                        $(serviceofferings).each(function() {
+                          items.push({id: this.id, description: this.displaytext});
+                        });
+                        args.response.success({data: items});
+                      }
+                    });
+                  }
+                }
+
+
+               }
+            },
+
+            action: function(args) {
+              $.ajax({
+                url: createURL("scaleVirtualMachine&id=" + args.context.instances[0].id + "&serviceofferingid=" + args.data.serviceOffering),
+                dataType: "json",
+                async: true,
+                success: function(json) {
+                  var jid = json.scaleupvirtualmachineresponse.jobid;
+                  args.response.success(
+                    {_custom:
+                     {jobId: jid,
+                      getUpdatedItem: function(json) {
+                        return json.queryasyncjobresultresponse.jobresult.virtualmachine;
+                      },
+                      getActionFilter: function() {
+                        return vmActionfilter;
+                      }
+                     }
+                    }
+                  );
+                },
+                 error:function(json){
+                     args.response.error(parseXMLHttpResponse(json));
+                }
+
+              });
+            },
+            messages: {
+              confirm: function(args) {
+                return 'Do you really want to scale Up your instance ?';
+              },
+              notification: function(args) {
+                return 'Instance Scaled Up';
+              }
+            },
+            notification: {
+              poll: pollAsyncJobResult
+            }
+
+          },
+
           viewConsole: {
             label: 'label.view.console',  
             action: {
@@ -1336,6 +1406,7 @@
       allowedActions.push("destroy");
       allowedActions.push("changeService");
       allowedActions.push("reset");
+      allowedActions.push("scaleUp");
 
       if (isAdmin())
         allowedActions.push("migrate");
@@ -1359,6 +1430,8 @@
       allowedActions.push("destroy");
       allowedActions.push("reset");
       allowedActions.push("snapshot");
+      allowedActions.push("scaleUp");
+
       if(isAdmin())
         allowedActions.push("migrateToAnotherStorage");
 

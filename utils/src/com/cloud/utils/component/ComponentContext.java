@@ -59,26 +59,40 @@ public class ComponentContext implements ApplicationContextAware {
 
     public static ApplicationContext getApplicationContext() {  
         return s_appContext;  
-    } 
-
+    }
+    
     public static void initComponentsLifeCycle() {
-        // Run the SystemIntegrityCheckers first
-        Map<String, SystemIntegrityChecker> integrityCheckers = getApplicationContext().getBeansOfType(SystemIntegrityChecker.class);
-        for (Entry<String,SystemIntegrityChecker> entry : integrityCheckers.entrySet() ){
-            s_logger.info ("Running SystemIntegrityChecker " + entry.getKey());
-            entry.getValue().check();
-        }
-        
-    	Map<String, ComponentLifecycle> lifecyleComponents = getApplicationContext().getBeansOfType(ComponentLifecycle.class);
+        AutowireCapableBeanFactory  beanFactory = s_appContext.getAutowireCapableBeanFactory();
+
+    	Map<String, ComponentMethodInterceptable> interceptableComponents = getApplicationContext().getBeansOfType(
+    		ComponentMethodInterceptable.class);
+    	for(Map.Entry<String, ComponentMethodInterceptable> entry : interceptableComponents.entrySet()) {
+    		Object bean = getTargetObject(entry.getValue());
+    		beanFactory.configureBean(bean, entry.getKey());
+    	}
+    	
+    	Map<String, ComponentLifecycle> lifecycleComponents = getApplicationContext().getBeansOfType(ComponentLifecycle.class);
  
     	Map[] classifiedComponents = new Map[ComponentLifecycle.MAX_RUN_LEVELS];
     	for(int i = 0; i < ComponentLifecycle.MAX_RUN_LEVELS; i++) {
     		classifiedComponents[i] = new HashMap<String, ComponentLifecycle>();
     	}
     	
-    	for(Map.Entry<String, ComponentLifecycle> entry : lifecyleComponents.entrySet()) {
+    	for(Map.Entry<String, ComponentLifecycle> entry : lifecycleComponents.entrySet()) {
     		classifiedComponents[entry.getValue().getRunLevel()].put(entry.getKey(), entry.getValue());
     	}
+
+        // Run the SystemIntegrityCheckers first
+        Map<String, SystemIntegrityChecker> integrityCheckers = getApplicationContext().getBeansOfType(SystemIntegrityChecker.class);
+        for (Entry<String,SystemIntegrityChecker> entry : integrityCheckers.entrySet() ){
+            s_logger.info ("Running SystemIntegrityChecker " + entry.getKey());
+            try {
+            	entry.getValue().check();
+            } catch(Throwable e) {
+            	s_logger.error("System integrity check failed. Refuse to startup");
+            	System.exit(1);
+            }
+        }
     	
     	// configuration phase
         Map<String, String> avoidMap = new HashMap<String, String>();

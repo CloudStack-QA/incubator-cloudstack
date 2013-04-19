@@ -1,3 +1,4 @@
+
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -25,6 +26,10 @@ import java.util.Map;
 import javax.inject.Inject;
 import javax.naming.ConfigurationException;
 
+import org.apache.cloudstack.api.ApiConstants;
+import org.apache.cloudstack.api.response.ExternalFirewallResponse;
+import org.apache.cloudstack.network.ExternalNetworkDeviceManager.NetworkDevice;
+import com.cloud.utils.Pair;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.AgentManager;
@@ -42,7 +47,6 @@ import com.cloud.agent.api.to.FirewallRuleTO;
 import com.cloud.agent.api.to.IpAddressTO;
 import com.cloud.agent.api.to.PortForwardingRuleTO;
 import com.cloud.agent.api.to.StaticNatRuleTO;
-import org.apache.cloudstack.api.ApiConstants;
 import com.cloud.configuration.Config;
 import com.cloud.configuration.dao.ConfigurationDao;
 import com.cloud.dc.DataCenter;
@@ -60,7 +64,6 @@ import com.cloud.host.Host;
 import com.cloud.host.HostVO;
 import com.cloud.host.dao.HostDao;
 import com.cloud.host.dao.HostDetailsDao;
-import org.apache.cloudstack.network.ExternalNetworkDeviceManager.NetworkDevice;
 import com.cloud.network.Networks.TrafficType;
 import com.cloud.network.dao.ExternalFirewallDeviceDao;
 import com.cloud.network.dao.ExternalFirewallDeviceVO;
@@ -80,10 +83,10 @@ import com.cloud.network.dao.PhysicalNetworkServiceProviderVO;
 import com.cloud.network.dao.PhysicalNetworkVO;
 import com.cloud.network.dao.VpnUserDao;
 import com.cloud.network.rules.FirewallRule;
+import com.cloud.network.rules.FirewallRule.Purpose;
 import com.cloud.network.rules.FirewallRuleVO;
 import com.cloud.network.rules.PortForwardingRule;
 import com.cloud.network.rules.StaticNat;
-import com.cloud.network.rules.FirewallRule.Purpose;
 import com.cloud.network.rules.dao.PortForwardingRulesDao;
 import com.cloud.offering.NetworkOffering;
 import com.cloud.offerings.dao.NetworkOfferingDao;
@@ -92,7 +95,6 @@ import com.cloud.resource.ResourceState;
 import com.cloud.resource.ResourceStateAdapter;
 import com.cloud.resource.ServerResource;
 import com.cloud.resource.UnableDeleteHostException;
-import org.apache.cloudstack.api.response.ExternalFirewallResponse;
 import com.cloud.user.Account;
 import com.cloud.user.AccountManager;
 import com.cloud.user.dao.AccountDao;
@@ -105,9 +107,8 @@ import com.cloud.utils.db.Transaction;
 import com.cloud.utils.exception.CloudRuntimeException;
 import com.cloud.utils.net.NetUtils;
 import com.cloud.utils.net.UrlUtil;
-import com.cloud.vm.Nic.ReservationStrategy;
-import com.cloud.vm.Nic.State;
 import com.cloud.vm.NicVO;
+import com.cloud.vm.Nic.ReservationStrategy;
 import com.cloud.vm.dao.DomainRouterDao;
 import com.cloud.vm.dao.NicDao;
 
@@ -116,7 +117,8 @@ public abstract class ExternalFirewallDeviceManagerImpl extends AdapterBase impl
     @Inject HostDao _hostDao;
     @Inject NetworkServiceMapDao _ntwkSrvcProviderDao;
     @Inject DataCenterDao _dcDao;
-    @Inject NetworkModel _networkMgr;
+    @Inject NetworkModel _networkModel;
+    @Inject NetworkManager _networkMgr;
     @Inject InlineLoadBalancerNicMapDao _inlineLoadBalancerNicMapDao;
     @Inject NicDao _nicDao;
     @Inject AgentManager _agentMgr;
@@ -428,7 +430,7 @@ public abstract class ExternalFirewallDeviceManagerImpl extends AdapterBase impl
         IPAddressVO sourceNatIp = null;
         if (!sharedSourceNat) {
             // Get the source NAT IP address for this account          
-            List<? extends IpAddress> sourceNatIps = _networkMgr.listPublicIpsAssignedToAccount(network.getAccountId(), 
+            List<? extends IpAddress> sourceNatIps = _networkModel.listPublicIpsAssignedToAccount(network.getAccountId(), 
                     zoneId, true);
 
             if (sourceNatIps.size() != 1) {
@@ -455,7 +457,7 @@ public abstract class ExternalFirewallDeviceManagerImpl extends AdapterBase impl
         }
 
         // Get network rate
-        Integer networkRate = _networkMgr.getNetworkRate(network.getId(), null);
+        Integer networkRate = _networkModel.getNetworkRate(network.getId(), null);
 
         IpAddressTO ip = new IpAddressTO(account.getAccountId(), sourceNatIpAddress, add, false, !sharedSourceNat, publicVlanTag, null, null, null, networkRate, false);
         IpAddressTO[] ips = new IpAddressTO[1];
@@ -483,7 +485,7 @@ public abstract class ExternalFirewallDeviceManagerImpl extends AdapterBase impl
 
         if (add && (!reservedIpAddressesForGuestNetwork.contains(network.getGateway()))) {
             // Insert a new NIC for this guest network to reserve the gateway address
-            savePlaceholderNic(network,  network.getGateway());
+            _networkMgr.savePlaceholderNic(network,  network.getGateway(), null);
         }
         
         // Delete any mappings used for inline external load balancers in this network
@@ -499,14 +501,13 @@ public abstract class ExternalFirewallDeviceManagerImpl extends AdapterBase impl
         
         // on network shutdown, delete placeHolder nics used for the firewall device
         if (!add) {
-            List<NicVO> guestIps = _nicDao.listByNetworkId(network.getId());
-            for (NicVO guestIp : guestIps) {
-                // only external firewall and external load balancer will create NicVO with PlaceHolder reservation strategy
-                if (guestIp.getReservationStrategy().equals(ReservationStrategy.PlaceHolder) && guestIp.getIp4Address().equals(network.getGateway())) {
-                    _nicDao.remove(guestIp.getId());
+            List<NicVO> nics = _nicDao.listByNetworkId(network.getId());
+            for (NicVO nic : nics) {
+                if (nic.getVmType() == null && nic.getReservationStrategy().equals(ReservationStrategy.PlaceHolder) && nic.getIp4Address().equals(network.getGateway())) {
+                    s_logger.debug("Removing placeholder nic " + nic + " for the network " + network);
+                    _nicDao.remove(nic.getId());
                 }
             }
-
             freeFirewallForNetwork(network);
         }
 
@@ -515,6 +516,7 @@ public abstract class ExternalFirewallDeviceManagerImpl extends AdapterBase impl
 
         return true;
     }
+
 
     @Override
     public boolean applyFirewallRules(Network network, List<? extends FirewallRule> rules) throws ResourceUnavailableException {
@@ -541,8 +543,15 @@ public abstract class ExternalFirewallDeviceManagerImpl extends AdapterBase impl
             if (rule.getSourceCidrList() == null && (rule.getPurpose() == Purpose.Firewall || rule.getPurpose() == Purpose.NetworkACL)) {
                 _fwRulesDao.loadSourceCidrs((FirewallRuleVO)rule);
             }
-            IpAddress sourceIp = _networkMgr.getIp(rule.getSourceIpAddressId());
-            FirewallRuleTO ruleTO = new FirewallRuleTO(rule, null, sourceIp.getAddress().addr());
+            FirewallRuleTO ruleTO;
+            if (rule.getPurpose() == Purpose.Firewall && rule.getTrafficType() == FirewallRule.TrafficType.Egress) {
+                String guestVlanTag = network.getBroadcastUri().getHost();
+                String guestCidr = network.getCidr();
+                ruleTO = new FirewallRuleTO(rule, guestVlanTag, rule.getTrafficType());
+            } else {
+                IpAddress sourceIp = _networkModel.getIp(rule.getSourceIpAddressId());
+                ruleTO = new FirewallRuleTO(rule, null, sourceIp.getAddress().addr());
+            }
             rulesTO.add(ruleTO);
         }
 
@@ -568,7 +577,7 @@ public abstract class ExternalFirewallDeviceManagerImpl extends AdapterBase impl
         List<StaticNatRuleTO> staticNatRules = new ArrayList<StaticNatRuleTO>();
         
         for (StaticNat rule : rules) {
-            IpAddress sourceIp = _networkMgr.getIp(rule.getSourceIpAddressId());
+            IpAddress sourceIp = _networkModel.getIp(rule.getSourceIpAddressId());
             Vlan vlan = _vlanDao.findById(sourceIp.getVlanId());
 
             StaticNatRuleTO ruleTO = new StaticNatRuleTO(0,vlan.getVlanTag(), sourceIp.getAddress().addr(), -1, -1, rule.getDestIpAddress(), -1, -1, "any", rule.isForRevoke(), false);
@@ -632,7 +641,7 @@ public abstract class ExternalFirewallDeviceManagerImpl extends AdapterBase impl
         }
         
         // Create/delete VPN
-        IpAddress ip = _networkMgr.getIp(vpn.getServerAddressId());
+        IpAddress ip = _networkModel.getIp(vpn.getServerAddressId());
         
         // Mask the IP range with the network's VLAN tag
         String[] ipRange = vpn.getIpRange().split("-");
@@ -707,17 +716,18 @@ public abstract class ExternalFirewallDeviceManagerImpl extends AdapterBase impl
         if (pNetwork.getVnet() == null) {
             throw new CloudRuntimeException("Could not find vlan range for physical Network " + physicalNetworkId + ".");
         }
-        String vlanRange[] = pNetwork.getVnet().split("-");
-        int lowestVlanTag = Integer.valueOf(vlanRange[0]);
+        Integer lowestVlanTag = null;
+        List<Pair<Integer, Integer>> vnetList = pNetwork.getVnet();
+        //finding the vlanrange in which the vlanTag lies.
+        for (Pair <Integer,Integer> vnet : vnetList){
+            if (vlanTag >= vnet.first() && vlanTag <= vnet.second()){
+                lowestVlanTag = vnet.first();
+            }
+        }
+        if (lowestVlanTag == null) {
+            throw new InvalidParameterValueException ("The vlan tag dose not belong to any of the existing vlan ranges");
+        }
         return vlanTag - lowestVlanTag;
-    }
-    
-    private NicVO savePlaceholderNic(Network network, String ipAddress) {
-        NicVO nic = new NicVO(null, null, network.getId(), null);
-        nic.setIp4Address(ipAddress);
-        nic.setReservationStrategy(ReservationStrategy.PlaceHolder);
-        nic.setState(State.Reserved);
-        return _nicDao.persist(nic);
     }
     
     public int getGloballyConfiguredCidrSize() {
@@ -771,7 +781,7 @@ public abstract class ExternalFirewallDeviceManagerImpl extends AdapterBase impl
         List<PortForwardingRuleTO> pfRules = new ArrayList<PortForwardingRuleTO>();
 
         for (PortForwardingRule rule : rules) {
-            IpAddress sourceIp = _networkMgr.getIp(rule.getSourceIpAddressId());
+            IpAddress sourceIp = _networkModel.getIp(rule.getSourceIpAddressId());
             Vlan vlan = _vlanDao.findById(sourceIp.getVlanId());
 
             PortForwardingRuleTO ruleTO = new PortForwardingRuleTO(rule, vlan.getVlanTag(), sourceIp.getAddress().addr());

@@ -648,7 +648,21 @@
     }
 
     // Actions column
-    if (actions && renderActionCol(actions)) {
+    var actionsArray = actions ? $.map(actions, function(v, k) {
+      if (k == 'add') {
+        v.isAdd = true;
+      }
+
+      return v;
+    }) : [];
+    var headerActionsArray = $.grep(
+      actionsArray,
+      function(action) {
+        return action.isHeader || action.isAdd;
+      }
+    );
+
+    if (actions && renderActionCol(actions) && actionsArray.length != headerActionsArray.length) {
       $thead.find('tr').append(
         $('<th></th>')
           .html(_l('label.actions'))
@@ -849,16 +863,14 @@
     var uiCustom = listViewArgs.uiCustom;
     var subselect = uiCustom ? listViewArgs.listView.subselect : null;
 
-    if (!data || ($.isArray(data) && !data.length)) {
+    if (!(data && data.length)) {
       if (!$tbody.find('tr').size()) {
         return [
-          $('<tr>').addClass('empty').append(
+          $('<tr>').addClass('empty last').append(
             $('<td>').html(_l('label.no.data'))
           ).appendTo($tbody)
         ];
       }
-
-      return $tbody.find('tr:last').addClass('last');
     }
 
     $tbody.find('tr.empty').remove();
@@ -1014,7 +1026,21 @@
       $tr.data('jsonObj', dataItem);
       $tr.data('list-view-action-filter', options.actionFilter);
 
-      if (actions && renderActionCol(actions)) {
+      var actionsArray = actions ? $.map(actions, function(v, k) {
+        if (k == 'add') {
+          v.isAdd = true;
+        }
+
+        return v;
+      }) : [];
+      var headerActionsArray = $.grep(
+        actionsArray,
+        function(action) {
+          return action.isHeader || action.isAdd;
+        }
+      );
+
+      if (actions && renderActionCol(actions) && actionsArray.length != headerActionsArray.length) {
         var allowedActions = $.map(actions, function(value, key) {
           return key;
         });

@@ -24,6 +24,7 @@ import javax.ejb.Local;
 import javax.inject.Inject;
 import javax.naming.ConfigurationException;
 
+import org.apache.cloudstack.storage.resource.SecondaryStorageDiscoverer;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.AgentManager;
@@ -40,11 +41,9 @@ import com.cloud.host.HostVO;
 import com.cloud.host.Status;
 import com.cloud.storage.SnapshotVO;
 import com.cloud.storage.dao.SnapshotDao;
-import com.cloud.storage.secondary.SecondaryStorageDiscoverer;
 import com.cloud.utils.exception.CloudRuntimeException;
-import org.springframework.stereotype.Component;
 
-@Component
+
 @Local(value=Discoverer.class)
 public class SimulatorSecondaryDiscoverer extends SecondaryStorageDiscoverer implements ResourceStateAdapter, Listener {
     private static final Logger s_logger = Logger.getLogger(SimulatorSecondaryDiscoverer.class);

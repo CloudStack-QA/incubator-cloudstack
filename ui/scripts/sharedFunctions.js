@@ -20,6 +20,7 @@ var g_role = null; // roles - root, domain-admin, ro-admin, user
 var g_username = null;
 var g_account = null;
 var g_domainid = null;
+var g_loginCmdText = null;
 var g_enableLogging = false;
 var g_timezoneoffset = null;
 var g_timezone = null;
@@ -324,7 +325,8 @@ cloudStack.converters = {
 	    if(g_timezoneoffset != null) 
 	      localDate = disconnected.getTimePlusTimezoneOffset(g_timezoneoffset);
 	    else 
-	      localDate = disconnected.getTimePlusTimezoneOffset(0);	 
+	      localDate = disconnected.toUTCString();
+             // localDate = disconnected.getTimePlusTimezoneOffset(0);	 
     }
 		return localDate; 		
 	},
@@ -400,11 +402,43 @@ cloudStack.converters = {
     case 4 : return _l('label.public.ips');
     case 5 : return _l('label.management.ips');
     case 6 : return _l('label.secondary.storage');
+    case 7 : return _l('label.host');
+    case 9 : return _l('label.domain.router');
+    case 10 : return _l('label.console.proxy');
+
+    // These are old values -- can be removed in the future
+    case 8 : return "User VM";
+    case 11 : return "Routing Host";
+    case 12 : return "Storage";
+    case 13 : return "Usage Server";
+    case 14 : return "Management Server";
+    case 15 : return "Domain Router";
+    case 16 : return "Console Proxy";
+    case 17 : return "User VM";
+    case 18 : return "VLAN";
+    case 19 : return "Secondary Storage VM";
+    case 20 : return "Usage Server";
+    case 21 : return "Storage";
+    case 22 : return "Update Resource Count";
+    case 23 : return "Usage Sanity Result";
+    case 24 : return "Direct Attached Public IP";
+    case 25 : return "Local Storage";
+    case 26 : return "Resource Limit Exceeded";
+    }
+  },
+
+  toCapacityCountType:function(capacityCode){
+   switch(capacityCode){
+    case 0 : return _l('label.memory');
+    case 1 : return _l('label.cpu');
+    case 2 : return _l('label.storage');
+    case 3 : return _l('label.primary.storage');
+    case 4 : return _l('label.public.ips');
+    case 5 : return _l('label.management.ips');
+    case 6 : return _l('label.secondary.storage');
     case 7 : return _l('label.vlan');
     case 8 : return _l('label.direct.ips');
     case 9 : return _l('label.local.storage');
-
-    // These are old values -- can be removed in the future 
     case 10 : return "Routing Host";
     case 11 : return "Storage";
     case 12 : return "Usage Server";
@@ -414,8 +448,9 @@ cloudStack.converters = {
     case 16 : return "User VM";
     case 17 : return "VLAN";
     case 18 : return "Secondary Storage VM";
-    }
-  },
+      }
+    },
+
   convertByType: function(alertCode, value) {
     switch(alertCode) {
       case 0: return cloudStack.converters.convertBytes(value);

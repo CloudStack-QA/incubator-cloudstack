@@ -51,7 +51,7 @@ class Services:
                     {
                         "displaytext": "Test ISO 1",
                         "name": "ISO 1",
-                        "url": "http://iso.linuxquestions.org/download/504/1819/http/gd4.tuwien.ac.at/dsl-4.4.10.iso",
+                        "url": "http://people.apache.org/~tsp/dummy.iso",
                         # Source URL where ISO is located
                         "isextractable": True,
                         "isfeatured": True,
@@ -62,7 +62,7 @@ class Services:
                     {
                         "displaytext": "Test ISO 2",
                         "name": "ISO 2",
-                        "url": "http://iso.linuxquestions.org/download/504/1819/http/gd4.tuwien.ac.at/dsl-4.4.10.iso",
+                        "url": "http://people.apache.org/~tsp/dummy.iso",
                         # Source URL where ISO is located
                         "isextractable": True,
                         "isfeatured": True,
@@ -80,8 +80,6 @@ class Services:
             "timeout": 10,
             "ostype": "CentOS 5.3 (64-bit)",
             # CentOS 5.3 (64 bit)
-            "mode": 'advanced'
-            # Networking mode: Basic or Advanced
         }
 
 
@@ -94,6 +92,7 @@ class TestCreateIso(cloudstackTestCase):
         # Get Zone, Domain and templates
         self.domain = get_domain(self.apiclient, self.services)
         self.zone = get_zone(self.apiclient, self.services)
+        self.services['mode'] = zone.networktype
         self.services["domainid"] = self.domain.id
         self.services["iso_2"]["zoneid"] = self.zone.id
 

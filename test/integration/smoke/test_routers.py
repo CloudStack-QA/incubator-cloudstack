@@ -63,7 +63,6 @@ class Services:
                          "ostype": "CentOS 5.3 (64-bit)",
                          "sleep": 60,
                          "timeout": 10,
-                         "mode": 'advanced',    # Networking mode: Basic, Advanced
                         }
 
 
@@ -80,6 +79,7 @@ class TestRouterServices(cloudstackTestCase):
         # Get Zone, Domain and templates
         cls.domain = get_domain(cls.api_client, cls.services)
         cls.zone = get_zone(cls.api_client, cls.services)
+        self.services['mode'] = zone.networktype
         template = get_template(
                             cls.api_client,
                             cls.zone.id,

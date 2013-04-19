@@ -206,19 +206,29 @@ public class ResourceManagerImpl extends ManagerBase implements ResourceManager,
     protected HighAvailabilityManager        _haMgr;
     @Inject
     protected StorageService                 _storageSvr;
-	// @com.cloud.utils.component.Inject(adapter = Discoverer.class)
+
+    protected List<? extends Discoverer> _discoverers;
+    public List<? extends Discoverer> getDiscoverers() {
+		return _discoverers;
+	}
+	public void setDiscoverers(List<? extends Discoverer> _discoverers) {
+		this._discoverers = _discoverers;
+	}
+
 	@Inject
-	protected List<? extends Discoverer> _discoverers;
-    @Inject
     protected ClusterManager                 _clusterMgr;
     @Inject
     protected StoragePoolHostDao             _storagePoolHostDao;
 
-	// @com.cloud.utils.component.Inject(adapter = PodAllocator.class)
-	@Inject
-	protected List<PodAllocator> _podAllocators = null;
+	protected List<PodAllocator> _podAllocators;
+    public List<PodAllocator> getPodAllocators() {
+		return _podAllocators;
+	}
+	public void setPodAllocators(List<PodAllocator> _podAllocators) {
+		this._podAllocators = _podAllocators;
+	}
 
-    @Inject
+	@Inject
     protected VMTemplateDao  _templateDao;
     @Inject
     protected ConfigurationManager 			 _configMgr;
@@ -1171,29 +1181,17 @@ public class ResourceManagerImpl extends ManagerBase implements ResourceManager,
             }
         }
 
-       ClusterDetailsVO memory_detail = _clusterDetailsDao.findDetail(cluster.getId(),"memoryOvercommitRatio");
-       if( memory_detail == null){
-           if (memoryovercommitratio.compareTo(1f) > 0){
-               memory_detail = new ClusterDetailsVO(cluster.getId(),"memoryOvercommitRatio",Float.toString(memoryovercommitratio));
-               _clusterDetailsDao.persist(memory_detail);
-           }
-       }
-       else {
+       if (memoryovercommitratio != null) {
+           ClusterDetailsVO memory_detail = _clusterDetailsDao.findDetail(cluster.getId(),"memoryOvercommitRatio");
            memory_detail.setValue(Float.toString(memoryovercommitratio));
            _clusterDetailsDao.update(memory_detail.getId(),memory_detail);
        }
 
-        ClusterDetailsVO cpu_detail = _clusterDetailsDao.findDetail(cluster.getId(),"cpuOvercommitRatio");
-        if( cpu_detail == null){
-            if (cpuovercommitratio.compareTo(1f) > 0){
-                cpu_detail = new ClusterDetailsVO(cluster.getId(),"cpuOvercommitRatio",Float.toString(cpuovercommitratio));
-                _clusterDetailsDao.persist(cpu_detail);
-            }
-        }
-        else {
+       if (cpuovercommitratio != null) {
+            ClusterDetailsVO cpu_detail = _clusterDetailsDao.findDetail(cluster.getId(),"cpuOvercommitRatio");
             cpu_detail.setValue(Float.toString(cpuovercommitratio));
             _clusterDetailsDao.update(cpu_detail.getId(),cpu_detail);
-        }
+       }
 
 
         if (doUpdate) {

@@ -37,21 +37,17 @@ import com.cloud.agent.AgentManager;
 import com.cloud.agent.Listener;
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.Command;
-
 import com.cloud.agent.api.storage.DeleteTemplateCommand;
 import com.cloud.agent.api.storage.DeleteVolumeCommand;
 import com.cloud.agent.api.storage.DownloadCommand;
-
 import com.cloud.agent.api.storage.DownloadCommand.Proxy;
 import com.cloud.agent.api.storage.DownloadCommand.ResourceType;
-import com.cloud.agent.api.storage.DownloadProgressCommand.RequestType;
-
 import com.cloud.agent.api.storage.DownloadProgressCommand;
+import com.cloud.agent.api.storage.DownloadProgressCommand.RequestType;
 import com.cloud.agent.api.storage.ListTemplateAnswer;
 import com.cloud.agent.api.storage.ListTemplateCommand;
 import com.cloud.agent.api.storage.ListVolumeAnswer;
 import com.cloud.agent.api.storage.ListVolumeCommand;
-
 import com.cloud.agent.manager.Commands;
 import com.cloud.alert.AlertManager;
 import com.cloud.configuration.Config;
@@ -64,6 +60,7 @@ import com.cloud.event.UsageEventUtils;
 import com.cloud.event.dao.UsageEventDao;
 import com.cloud.exception.AgentUnavailableException;
 import com.cloud.exception.InvalidParameterValueException;
+import com.cloud.exception.ResourceAllocationException;
 import com.cloud.exception.StorageUnavailableException;
 import com.cloud.host.Host;
 import com.cloud.host.HostVO;
@@ -71,13 +68,12 @@ import com.cloud.host.dao.HostDao;
 import com.cloud.hypervisor.Hypervisor.HypervisorType;
 import com.cloud.resource.ResourceManager;
 import com.cloud.storage.Storage.ImageFormat;
-
 import com.cloud.storage.StorageManager;
 import com.cloud.storage.SwiftVO;
 import com.cloud.storage.VMTemplateHostVO;
 import com.cloud.storage.VMTemplateStorageResourceAssoc;
-import com.cloud.storage.VMTemplateVO;
 import com.cloud.storage.VMTemplateStorageResourceAssoc.Status;
+import com.cloud.storage.VMTemplateVO;
 import com.cloud.storage.VMTemplateZoneVO;
 import com.cloud.storage.VolumeHostVO;
 import com.cloud.storage.VolumeVO;
@@ -90,14 +86,15 @@ import com.cloud.storage.dao.VMTemplateSwiftDao;
 import com.cloud.storage.dao.VMTemplateZoneDao;
 import com.cloud.storage.dao.VolumeDao;
 import com.cloud.storage.dao.VolumeHostDao;
-
 import com.cloud.storage.secondary.SecondaryStorageVmManager;
 import com.cloud.storage.swift.SwiftManager;
 import com.cloud.storage.template.TemplateConstants;
 import com.cloud.storage.template.TemplateInfo;
 import com.cloud.template.TemplateManager;
 import com.cloud.user.Account;
+import com.cloud.user.AccountManager;
 import com.cloud.user.ResourceLimitService;
+import com.cloud.utils.UriUtils;
 import com.cloud.utils.component.ManagerBase;
 import com.cloud.utils.db.DB;
 import com.cloud.utils.db.JoinBuilder;
@@ -177,6 +174,8 @@ public class DownloadMonitorImpl extends ManagerBase implements  DownloadMonitor
     protected ResourceLimitService _resourceLimitMgr;
     @Inject
     protected UserVmDao _userVmDao;
+    @Inject
+    protected AccountManager _accountMgr;
 
 	private Boolean _sslCopy = new Boolean(false);
 	private String _copyAuthPasswd;
@@ -279,17 +278,17 @@ public class DownloadMonitorImpl extends ManagerBase implements  DownloadMonitor
             String sourceChecksum = this.templateMgr.getChecksum(srcTmpltHost.getHostId(), srcTmpltHost.getInstallPath());
 			DownloadCommand dcmd =  
               new DownloadCommand(destServer.getStorageUrl(), url, template, TemplateConstants.DEFAULT_HTTP_AUTH_USER, _copyAuthPasswd, maxTemplateSizeInBytes); 
-			dcmd.setProxy(getHttpProxy());
 			if (downloadJobExists) {
 				dcmd = new DownloadProgressCommand(dcmd, destTmpltHost.getJobId(), RequestType.GET_OR_RESTART);
 	 		}
+            dcmd.setProxy(getHttpProxy());
 			dcmd.setChecksum(sourceChecksum); // We need to set the checksum as the source template might be a compressed url and have cksum for compressed image. Bug #10775
             HostVO ssAhost = _ssvmMgr.pickSsvmHost(destServer);
             if( ssAhost == null ) {
                  s_logger.warn("There is no secondary storage VM for secondary storage host " + destServer.getName());
                  return false;
             }
-            DownloadListener dl = new DownloadListener(ssAhost, destServer, template, _timer, _vmTemplateHostDao, destTmpltHost.getId(), this, dcmd, _templateDao);
+            DownloadListener dl = new DownloadListener(ssAhost, destServer, template, _timer, _vmTemplateHostDao, destTmpltHost.getId(), this, dcmd, _templateDao, _resourceLimitMgr, _alertMgr, _accountMgr);
             if (downloadJobExists) {
                 dl.setCurrState(destTmpltHost.getDownloadState());
             }
@@ -364,10 +363,10 @@ public class DownloadMonitorImpl extends ManagerBase implements  DownloadMonitor
 		    start();
 			DownloadCommand dcmd =
              new DownloadCommand(secUrl, template, maxTemplateSizeInBytes);
-			dcmd.setProxy(getHttpProxy());
 	        if (downloadJobExists) {
 	            dcmd = new DownloadProgressCommand(dcmd, vmTemplateHost.getJobId(), RequestType.GET_OR_RESTART);
 	        }
+            dcmd.setProxy(getHttpProxy());
 			if (vmTemplateHost.isCopy()) {
 				dcmd.setCreds(TemplateConstants.DEFAULT_HTTP_AUTH_USER, _copyAuthPasswd);
 			}
@@ -376,7 +375,7 @@ public class DownloadMonitorImpl extends ManagerBase implements  DownloadMonitor
 	             s_logger.warn("There is no secondary storage VM for secondary storage host " + sserver.getName());
 	             return;
 			}
-			DownloadListener dl = new DownloadListener(ssAhost, sserver, template, _timer, _vmTemplateHostDao, vmTemplateHost.getId(), this, dcmd, _templateDao);
+			DownloadListener dl = new DownloadListener(ssAhost, sserver, template, _timer, _vmTemplateHostDao, vmTemplateHost.getId(), this, dcmd, _templateDao, _resourceLimitMgr, _alertMgr, _accountMgr);
 			if (downloadJobExists) {
 				dl.setCurrState(vmTemplateHost.getDownloadState());
 	 		}
@@ -453,19 +452,18 @@ public class DownloadMonitorImpl extends ManagerBase implements  DownloadMonitor
 		if(volumeHost != null) {
 		    start();
 			DownloadCommand dcmd = new DownloadCommand(secUrl, volume, maxVolumeSizeInBytes, checkSum, url, format);
-			dcmd.setProxy(getHttpProxy());
 	        if (downloadJobExists) {
 	            dcmd = new DownloadProgressCommand(dcmd, volumeHost.getJobId(), RequestType.GET_OR_RESTART);
 	            dcmd.setResourceType(ResourceType.VOLUME);
 	        }
-			
+            dcmd.setProxy(getHttpProxy());
 			HostVO ssvm = _ssvmMgr.pickSsvmHost(sserver);
 			if( ssvm == null ) {
 	             s_logger.warn("There is no secondary storage VM for secondary storage host " + sserver.getName());
 	             return;
 			}
 			DownloadListener dl = new DownloadListener(ssvm, sserver, volume, _timer, _volumeHostDao, volumeHost.getId(),
-					this, dcmd, _volumeDao, _storageMgr);
+					this, dcmd, _volumeDao, _storageMgr, _resourceLimitMgr, _alertMgr, _accountMgr);
 			
 			if (downloadJobExists) {
 				dl.setCurrState(volumeHost.getDownloadState());
@@ -561,18 +559,21 @@ public class DownloadMonitorImpl extends ManagerBase implements  DownloadMonitor
             else{
                 s_logger.warn("Failed to get size for volume" + volume.getName());
             }
-            String eventType = EventTypes.EVENT_VOLUME_UPLOAD;            
+            String eventType = EventTypes.EVENT_VOLUME_UPLOAD;
             if(volume.getAccountId() != Account.ACCOUNT_ID_SYSTEM){
                 UsageEventUtils.publishUsageEvent(eventType, volume.getAccountId(), host.getDataCenterId(),
                         volume.getId(), volume.getName(), null, 0l, size, volume.getClass().getName(), volume.getUuid());
             }
         }else if (dnldStatus == Status.DOWNLOAD_ERROR || dnldStatus == Status.ABANDONED || dnldStatus == Status.UNKNOWN){
-            //Decrement the volume count
-        	_resourceLimitMgr.decrementResourceCount(volume.getAccountId(), com.cloud.configuration.Resource.ResourceType.volume);
+            //Decrement the volume and secondary storage space count
+            _resourceLimitMgr.decrementResourceCount(volume.getAccountId(),
+                    com.cloud.configuration.Resource.ResourceType.volume);
+            _resourceLimitMgr.recalculateResourceCount(volume.getAccountId(), volume.getDomainId(),
+                    com.cloud.configuration.Resource.ResourceType.secondary_storage.getOrdinal());
         }
-        txn.commit();		
+        txn.commit();
 	}
-	
+
 	@Override
     public void handleSysTemplateDownload(HostVO host) {
 	    List<HypervisorType> hypers = _resourceMgr.listAvailHypervisorInZone(host.getId(), host.getDataCenterId());
@@ -748,6 +749,22 @@ public class DownloadMonitorImpl extends ManagerBase implements  DownloadMonitor
                         volume.setSize(volInfo.getSize());
                         _volumeDao.update(volumeHost.getVolumeId(), volume);
                     }
+
+                    if (volInfo.getSize() > 0) {
+                        try {
+                            String url = _volumeHostDao.findByVolumeId(volume.getId()).getDownloadUrl();
+                            _resourceLimitMgr.checkResourceLimit(_accountMgr.getAccount(volume.getAccountId()),
+                                    com.cloud.configuration.Resource.ResourceType.secondary_storage,
+                                    volInfo.getSize() - UriUtils.getRemoteSize(url));
+                        } catch (ResourceAllocationException e) {
+                            s_logger.warn(e.getMessage());
+                            _alertMgr.sendAlert(_alertMgr.ALERT_TYPE_RESOURCE_LIMIT_EXCEEDED, volume.getDataCenterId(),
+                                    volume.getPodId(), e.getMessage(), e.getMessage());
+                        } finally {
+                            _resourceLimitMgr.recalculateResourceCount(volume.getAccountId(), volume.getDomainId(),
+                                    com.cloud.configuration.Resource.ResourceType.secondary_storage.getOrdinal());
+                        }
+                    }
                 }
                 continue;
         	}
@@ -834,7 +851,7 @@ public class DownloadMonitorImpl extends ManagerBase implements  DownloadMonitor
                 TemplateInfo tmpltInfo = templateInfos.remove(uniqueName);
                 toBeDownloaded.remove(tmplt);
                 if (tmpltHost != null) {
-                    s_logger.info("Template Sync found " + uniqueName + " already in the template host table");
+                    s_logger.info("Template Sync found " + tmplt.getName() + " already in the template host table");
                     if (tmpltHost.getDownloadState() != Status.DOWNLOADED) {
                         tmpltHost.setErrorString("");
                     }
@@ -857,6 +874,22 @@ public class DownloadMonitorImpl extends ManagerBase implements  DownloadMonitor
                         tmpltHost.setSize(tmpltInfo.getSize());
                         tmpltHost.setPhysicalSize(tmpltInfo.getPhysicalSize());
                         tmpltHost.setLastUpdated(new Date());
+
+                        if (tmpltInfo.getSize() > 0) {
+                            long accountId = tmplt.getAccountId();
+                            try {
+                                _resourceLimitMgr.checkResourceLimit(_accountMgr.getAccount(accountId),
+                                        com.cloud.configuration.Resource.ResourceType.secondary_storage,
+                                        tmpltInfo.getSize() - UriUtils.getRemoteSize(tmplt.getUrl()));
+                            } catch (ResourceAllocationException e) {
+                                s_logger.warn(e.getMessage());
+                                _alertMgr.sendAlert(_alertMgr.ALERT_TYPE_RESOURCE_LIMIT_EXCEEDED, ssHost.getDataCenterId(),
+                                        null, e.getMessage(), e.getMessage());
+                            } finally {
+                                _resourceLimitMgr.recalculateResourceCount(accountId, _accountMgr.getAccount(accountId).getDomainId(),
+                                        com.cloud.configuration.Resource.ResourceType.secondary_storage.getOrdinal());
+                            }
+                        }
                     }
                     _vmTemplateHostDao.update(tmpltHost.getId(), tmpltHost);
                 } else {
@@ -878,10 +911,12 @@ public class DownloadMonitorImpl extends ManagerBase implements  DownloadMonitor
                 continue;
             }
             if (tmpltHost != null && tmpltHost.getDownloadState() != Status.DOWNLOADED) {
-                s_logger.info("Template Sync did not find " + uniqueName + " ready on server " + sserverId + ", will request download to start/resume shortly");
+                s_logger.info("Template Sync did not find " + tmplt.getName() + " ready on server " + sserverId
+                        + ", will request download to start/resume shortly");
 
             } else if (tmpltHost == null) {
-                s_logger.info("Template Sync did not find " + uniqueName + " on the server " + sserverId + ", will request download shortly");
+                s_logger.info("Template Sync did not find " + tmplt.getName() + " on the server " + sserverId
+                        + ", will request download shortly");
                 VMTemplateHostVO templtHost = new VMTemplateHostVO(sserverId, tmplt.getId(), new Date(), 0, Status.NOT_DOWNLOADED, null, null, null, null, tmplt.getUrl());
                 _vmTemplateHostDao.persist(templtHost);
                 VMTemplateZoneVO tmpltZoneVO = _vmTemplateZoneDao.findByZoneTemplate(zoneId, tmplt.getId());
@@ -931,6 +966,9 @@ public class DownloadMonitorImpl extends ManagerBase implements  DownloadMonitor
                     }
                     s_logger.debug("Template " + tmplt.getName() + " needs to be downloaded to " + ssHost.getName());
                     downloadTemplateToStorage(tmplt, ssHost);
+                } else {
+                    s_logger.info("Skipping download of template " + tmplt.getName() + " since we don't have any "
+                            + tmplt.getHypervisorType() + " hypervisors");
                 }
             }
         }

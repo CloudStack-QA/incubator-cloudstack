@@ -20,17 +20,16 @@ import java.util.List;
 
 import javax.ejb.Local;
 
+import org.apache.cloudstack.api.response.AccountResponse;
+import org.apache.cloudstack.api.response.UserResponse;
 import org.apache.log4j.Logger;
+import org.springframework.stereotype.Component;
 
 import com.cloud.api.ApiDBUtils;
 import com.cloud.api.query.ViewResponseHelper;
 import com.cloud.api.query.vo.AccountJoinVO;
 import com.cloud.api.query.vo.UserAccountJoinVO;
 import com.cloud.configuration.Resource.ResourceType;
-import org.apache.cloudstack.api.response.AccountResponse;
-import org.apache.cloudstack.api.response.UserResponse;
-import org.springframework.stereotype.Component;
-
 import com.cloud.user.Account;
 import com.cloud.utils.db.GenericDaoBase;
 import com.cloud.utils.db.SearchBuilder;
@@ -66,6 +65,7 @@ public class AccountJoinDaoImpl extends GenericDaoBase<AccountJoinVO, Long> impl
         accountResponse.setState(account.getState().toString());
         accountResponse.setNetworkDomain(account.getNetworkDomain());
         accountResponse.setDefaultZone(account.getDataCenterUuid());
+        accountResponse.setIsDefault(account.isDefault());
 
         // get network stat
         accountResponse.setBytesReceived(account.getBytesReceived());
@@ -174,6 +174,24 @@ public class AccountJoinDaoImpl extends GenericDaoBase<AccountJoinVO, Long> impl
         accountResponse.setMemoryLimit(memoryLimitDisplay);
         accountResponse.setMemoryTotal(memoryTotal);
         accountResponse.setMemoryAvailable(memoryAvail);
+
+      //get resource limits for primary storage space and convert it from Bytes to GiB
+        long primaryStorageLimit = ApiDBUtils.findCorrectResourceLimit(account.getPrimaryStorageLimit(), account.getType(), ResourceType.primary_storage);
+        String primaryStorageLimitDisplay = (accountIsAdmin || primaryStorageLimit == -1) ? "Unlimited" : String.valueOf(primaryStorageLimit / ResourceType.bytesToGiB);
+        long primaryStorageTotal = (account.getPrimaryStorageTotal() == null) ? 0 : (account.getPrimaryStorageTotal() / ResourceType.bytesToGiB);
+        String primaryStorageAvail = (accountIsAdmin || primaryStorageLimit == -1) ? "Unlimited" : String.valueOf((primaryStorageLimit / ResourceType.bytesToGiB) - primaryStorageTotal);
+        accountResponse.setPrimaryStorageLimit(primaryStorageLimitDisplay);
+        accountResponse.setPrimaryStorageTotal(primaryStorageTotal);
+        accountResponse.setPrimaryStorageAvailable(primaryStorageAvail);
+
+        //get resource limits for secondary storage space and convert it from Bytes to GiB
+        long secondaryStorageLimit = ApiDBUtils.findCorrectResourceLimit(account.getSecondaryStorageLimit(), account.getType(), ResourceType.secondary_storage);
+        String secondaryStorageLimitDisplay = (accountIsAdmin || secondaryStorageLimit == -1) ? "Unlimited" : String.valueOf(secondaryStorageLimit / ResourceType.bytesToGiB);
+        long secondaryStorageTotal = (account.getSecondaryStorageTotal() == null) ? 0 : (account.getSecondaryStorageTotal() / ResourceType.bytesToGiB);
+        String secondaryStorageAvail = (accountIsAdmin || secondaryStorageLimit == -1) ? "Unlimited" : String.valueOf((secondaryStorageLimit / ResourceType.bytesToGiB) - secondaryStorageTotal);
+        accountResponse.setSecondaryStorageLimit(secondaryStorageLimitDisplay);
+        accountResponse.setSecondaryStorageTotal(secondaryStorageTotal);
+        accountResponse.setSecondaryStorageAvailable(secondaryStorageAvail);
 
         // adding all the users for an account as part of the response obj
         List<UserAccountJoinVO> usersForAccount = ApiDBUtils.findUserViewByAccountId(account.getId());
