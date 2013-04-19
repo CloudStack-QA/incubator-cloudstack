@@ -3041,3 +3041,35 @@ class ASA1000V:
         cmd = listCiscoAsa1000vResources.listCiscoAsa1000vResourcesCmd()
         [setattr(cmd, k, v) for k, v in kwargs.items()]
         return(apiclient.listCiscoAsa1000vResources(cmd))
+
+
+class Resources:
+    """Manage resource limits"""
+
+    def __init__(self, items, services):
+        self.__dict__.update(items)
+
+    @classmethod
+    def list(cls, apiclient, **kwargs):
+        """Lists resource limits"""
+
+        cmd = listResourceLimits.listResourceLimitsCmd()
+        [setattr(cmd, k, v) for k, v in kwargs.items()]
+        return(apiclient.listResourceLimits(cmd))
+
+    @classmethod
+    def updateLimit(cls, apiclient, **kwargs):
+        """Updates resource limits"""
+
+        cmd = updateResourceLimit.updateResourceLimitCmd()
+        [setattr(cmd, k, v) for k, v in kwargs.items()]
+        return(apiclient.updateResourceLimit(cmd))
+
+    @classmethod
+    def updateCount(cls, apiclient, **kwargs):
+        """Updates resource count"""
+
+        cmd = updateResourceCount.updateResourceCountCmd()
+        [setattr(cmd, k, v) for k, v in kwargs.items()]
+        return(apiclient.updateResourceCount(cmd))
+
