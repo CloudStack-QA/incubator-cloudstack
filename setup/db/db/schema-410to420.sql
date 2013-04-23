@@ -374,6 +374,7 @@ CREATE VIEW `cloud`.`user_vm_view` AS
         data_center.id data_center_id,
         data_center.uuid data_center_uuid,
         data_center.name data_center_name,
+        data_center.networktype data_center_type,
         data_center.is_security_group_enabled security_group_enabled,
         host.id host_id,
         host.uuid host_uuid,
@@ -775,3 +776,5 @@ CREATE VIEW `cloud`.`account_view` AS
         `cloud`.`async_job` ON async_job.instance_id = account.id
             and async_job.instance_type = 'Account'
             and async_job.job_status = 0;
+
+alter table `cloud_usage`.`usage_network_offering` add column nic_id bigint(20) unsigned NOT NULL;             
