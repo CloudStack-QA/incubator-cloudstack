@@ -33,7 +33,7 @@ from requests import RequestException
 class cloudConnection(object):
     """ Connections to make API calls to the cloudstack management server
     """
-    def __init__(self, mgtSvr, port=8096, apiKey=None, securityKey=None,
+    def __init__(self, mgtSvr, port=8096, user=None, passwd=None, apiKey=None, securityKey=None,
                  asyncTimeout=3600, logging=None, scheme='http',
                  path='client/api'):
         self.apiKey = apiKey
@@ -59,7 +59,8 @@ class cloudConnection(object):
                        % (self.protocol, self.mgtSvr, self.port, self.path)
 
     def __copy__(self):
-        return cloudConnection(self.mgtSvr, self.port, self.apiKey,
+        return cloudConnection(self.mgtSvr, self.port,
+			       self.user, self.passwd, self.apiKey,
                                self.securityKey, self.asyncTimeout,
                                self.logging, self.protocol, self.path)
 
