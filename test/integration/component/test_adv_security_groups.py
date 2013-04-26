@@ -2,7 +2,7 @@
 """
 # Import Local Modules
 from nose.plugins.attrib import attr
-from marvin import cloudstackTestCase
+from marvin.cloudstackTestCase import cloudstackTestCase, unittest
 from marvin.integration.lib.base import (NetworkOffering,
                                          Network,
                                          Domain,
@@ -11,14 +11,18 @@ from marvin.integration.lib.base import (NetworkOffering,
                                          VirtualMachine,
                                          PhysicalNetwork,
                                          VpcOffering,
-                                         VPC)
+                                         VPC,
+                                         Iso,
+                                         Host,
+                                         SecurityGroup)
 from marvin.integration.lib.common import (get_domain,
                                            get_zone,
                                            get_template,
                                            cleanup_resources,
                                            wait_for_cleanup
                                            )
-import unittest
+from marvin.cloudstackAPI import (deleteSecurityGroup)
+import random
 
 
 class Services:
@@ -37,7 +41,7 @@ class Services:
                             "email": "user@test.com",
                             "firstname": "user",
                             "lastname": "user",
-                            "username": "user",
+                            "username": "secgrp",
                             # Random characters are appended for unique name
                             "password": "fr3sca",
                         },
@@ -98,18 +102,20 @@ class Services:
                             "name": "MySharedNetwork - Test",
                             "displaytext": "MySharedNetwork",
                             "networkofferingid": "1",
-                            "vlan": 1200,
+                            "vlan": 1456,
                             "gateway": "172.16.15.1",
                             "netmask": "255.255.255.0",
                             "startip": "172.16.15.2",
                             "endip": "172.16.15.20",
                             "acltype": "Domain",
                             "scope": "all",
+                            "startvLan": 600,
+                            "endvLan": 700
                         },
                         "network1": {
                             "name": "MySharedNetwork - Test1",
                             "displaytext": "MySharedNetwork1",
-                            "vlan": 1201,
+                            "vlan": 1313,
                             "gateway": "172.16.15.1",
                             "netmask": "255.255.255.0",
                             "startip": "172.16.15.21",
@@ -135,6 +141,13 @@ class Services:
                                 "UserData": 'VirtualRouter',
                                 "StaticNat": 'VirtualRouter',
                             },
+                        },
+                        "security_group": {
+                            "name": 'SSH',
+                            "protocol": 'TCP',
+                            "startport": 22,
+                            "endport": 22,
+                            "cidrlist": '0.0.0.0/0',
                         },
                         "isolated_network": {
                             "name": "Isolated Network",
@@ -164,13 +177,13 @@ class Services:
                         "mode": 'advanced'
                     }
 
-@unittest.skip("Skipping - work in progress")
+
 class TestSharedNetworks(cloudstackTestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.api_client = super(TestSharedNetworks, cls
-                               ).getClsTestClient().getApiClient()
+        cls.api_client = super(TestSharedNetworks,
+                                cls).getClsTestClient().getApiClient()
 
         cls.services = Services().services
 
@@ -210,18 +223,13 @@ class TestSharedNetworks(cloudstackTestCase):
         self.dbclient = self.testClient.getDbConnection()
         self.cleanup = []
         self.cleanup_networks = []
+        self.cleanup_projects = []
         self.cleanup_accounts = []
         self.cleanup_domains = []
         self.cleanup_vms = []
         return
 
     def tearDown(self):
-        try:
-            # Clean up, terminate the created network offerings
-            cleanup_resources(self.apiclient, self.cleanup)
-        except Exception as e:
-            raise Exception("Warning: Exception during cleanup : %s" % e)
-
         # below components is not a part of cleanup because to mandate
         # the order and to cleanup network
         try:
@@ -258,8 +266,35 @@ class TestSharedNetworks(cloudstackTestCase):
             for network in self.cleanup_networks:
                 network.delete(self.apiclient)
         except Exception as e:
-            raise Exception("Warning:Exception during project cleanup: %s" % e)
+            raise Exception("Warning:Exception during network cleanup: %s" % e)
+        try:
+            # Clean up, terminate the created network offerings
+            cleanup_resources(self.apiclient, self.cleanup)
+        except Exception as e:
+            raise Exception("Warning: Exception during cleanup : %s" % e)
         return
+
+    def create_Sec_Group(self, account):
+        """Creates a custom security group"""
+
+        self.debug("Creates a security group in account: %s" %
+                                                    account.account.name)
+        try:
+            security_group = SecurityGroup.create(self.apiclient,
+                                          self.services["security_group"],
+                                          account=account.account.name,
+                                          domainid=account.account.domainid)
+        except Exception as e:
+            self.fail("Failed to create security group: %s" % e)
+
+        self.debug("Created security group with ID: %s" % security_group.id)
+
+        sercurity_groups = SecurityGroup.list(self.apiclient,
+                                            account=account.account.name,
+                                            domainid=account.account.domainid)
+        self.assertEqual(isinstance(sercurity_groups, list), True,
+                         "Check for list security groups response")
+        return security_group
 
     def create_Domain(self, parent='ROOT'):
         """Creates a domain"""
@@ -290,7 +325,6 @@ class TestSharedNetworks(cloudstackTestCase):
         nw_off = NetworkOffering.create(self.apiclient,
                                             services,
                                             conservemode=False)
-        self.cleanup.append(nw_off)
 
         # Verify that the network offering got created
         nw_offs = NetworkOffering.list(self.apiclient, id=nw_off.id)
@@ -309,6 +343,12 @@ class TestSharedNetworks(cloudstackTestCase):
         self.assertEqual(nw_offs[0].state, "Enabled",
             "The network offering state should get updated to Enabled")
         return nw_off
+
+    def get_Rand_vLan(self):
+        vLan = random.sample(range(self.services["network"]["startvLan"],
+                                    self.services["network"]["endvLan"]), 1)
+        # TODO: Check if vLAN in use
+        return vLan
 
     def create_Shared_Network(self, account, nw_off=None, acltype="Account",
                               subdomainaccess=None, services=None,
@@ -342,10 +382,12 @@ class TestSharedNetworks(cloudstackTestCase):
                                     DomainName=account.account.domain)
             if services is None:
                 services = self.services["network"]
+                services["vlan"] = self.get_Rand_vLan()[0]
+                self.debug("VLAN used: %s" % str(services["vlan"]))
             network = Network.create(api_client, services,
                             accountid=account.account.name,
                             domainid=account.account.domainid,
-                            networkofferingid=self.shared_network_offering.id,
+                            networkofferingid=nw_off.id,
                             subdomainaccess=subdomainaccess,
                             zoneid=self.zone.id)
         except Exception as e:
@@ -353,7 +395,28 @@ class TestSharedNetworks(cloudstackTestCase):
         self.debug("Shared network created: %s" % network.name)
         return network
 
-    def validate_Shared_Network(self, network, state="Implemented"):
+    def validate_Ingress_Rule(self, vm):
+        self.debug("SSH into VM: %s" % vm.name)
+        try:
+            vm.get_ssh_client()
+        except Exception as e:
+            self.fail("SSH Access failed for %s: %s" % (vm.ipaddress, e))
+        return
+
+    def find_Suitable_Host(self, vm):
+        """Returns a suitable host for VM migration"""
+
+        try:
+            hosts = Host.list(self.apiclient,
+                              virtualmachineid=vm.id,
+                              listall=True)
+            self.assertIsInstance(hosts, list, "Failed to find suitable host")
+            return hosts[0]
+        except Exception as e:
+            self.fail("Failed to find suitable host vm migration: %s" % e)
+        return
+
+    def validate_Shared_Network(self, network, state="Setup"):
         """Validates the shared network"""
 
         self.debug("Fetching list of networks with ID: %s" % network.id)
@@ -366,10 +429,43 @@ class TestSharedNetworks(cloudstackTestCase):
                          "network state should be implemented")
         return
 
-    def create_Instance(self, account, startvm=True, networks=None):
+    def create_Iso(self, account, services=None):
+        """Creates an ISO in account"""
+
+        self.debug("Registering a ISO in account: %s" % account.account.name)
+        if services == None:
+            services = self.services["iso"]
+        iso = Iso.create(self.apiclient,
+                         services,
+                         account=self.account.account.name,
+                         domainid=self.account.account.domainid)
+
+        self.debug("Successfully created ISO with ID: %s" % iso.id)
+        try:
+            iso.download(self.apiclient)
+        except Exception as e:
+            self.fail("Exception while downloading ISO %s: %s"\
+                      % (iso.id, e))
+        return iso
+
+    def configure_Ingress(self, account, sec_group, services=None):
+        """Configures ingress rule for security group"""
+
+        self.debug("Configuring ingress rule for security group: %s" %
+                                                                sec_group.name)
+        ingress_rule = sec_group.authorize(self.apiclient,
+                                            services,
+                                            account=account.account.name,
+                                            domainid=account.account.domainid)
+        self.assertEqual(isinstance(ingress_rule, dict), True,
+                        "Check ingress rule created properly")
+        return ingress_rule
+
+    def create_Instance(self, account, startvm=True, networks=None,
+                        sec_groups=None):
         """Creates an instance in account"""
         self.debug("Deploying an instance in account: %s" %
-                                                self.account.account.name)
+                                                    account.account.name)
         try:
             vm = VirtualMachine.create(
                                 self.apiclient,
@@ -379,6 +475,7 @@ class TestSharedNetworks(cloudstackTestCase):
                                 domainid=account.account.domainid,
                                 startvm=startvm,
                                 networkids=networks,
+                                securitygroupids=sec_groups,
                                 serviceofferingid=self.service_offering.id)
             vms = VirtualMachine.list(self.apiclient, id=vm.id, listall=True)
             self.assertIsInstance(vms,
@@ -470,8 +567,8 @@ class TestSharedNetworks(cloudstackTestCase):
 
         self.debug("Creating domain wide shared network for account: %s" %
                                                         account.account.name)
-        network_1 = self.create_Shared_Network(account, acltype="Zone")
-        network_2 = self.create_Shared_Network(account, acltype="Zone")
+        network_1 = self.create_Shared_Network(account, acltype="Domain")
+        network_2 = self.create_Shared_Network(account, acltype="Domain")
         self.debug("Verifying the shared network created: %s" % network_1.name)
         self.validate_Shared_Network(network_1)
         self.debug("Verifying the shared network created: %s" % network_2.name)
@@ -505,7 +602,6 @@ class TestSharedNetworks(cloudstackTestCase):
             network = self.create_Shared_Network(account)
             self.debug("Verifying the shared network created: %s" %
                                                                 network.name)
-
             self.validate_Shared_Network(network)
         return
 
@@ -558,6 +654,7 @@ class TestSharedNetworks(cloudstackTestCase):
         nw_off = NetworkOffering.create(self.apiclient,
                                     self.services["isolated_network_offering"])
         nw_off.update(self.apiclient, state="Enabled")
+        self.cleanup.append(nw_off)
         with self.assertRaises(Exception):
             Network.create(self.apiclient,
                            self.services["network"],
@@ -582,21 +679,20 @@ class TestSharedNetworks(cloudstackTestCase):
         self.debug("Creating a VPC offering in zone: %s" % self.zone.name)
         vpc_off = VpcOffering.create(self.apiclient,
                                      self.services["vpc_offering"])
-
-        self._cleanup.append(self.vpc_off)
         self.debug("Enabling the VPC offering created")
         vpc_off.update(self.apiclient, state='Enabled')
 
+        self.cleanup.append(vpc_off)
         self.debug("Creating a VPC network in the account: %s" %
-                                                    self.account.account.name)
+                                                        account.account.name)
         with self.assertRaises(Exception):
             VPC.create(
                         self.apiclient,
                         self.services["vpc"],
                         vpcofferingid=vpc_off.id,
                         zoneid=self.zone.id,
-                        account=self.account.account.name,
-                        domainid=self.account.account.domainid
+                        account=account.account.name,
+                        domainid=account.account.domainid
                         )
         return
 
@@ -646,8 +742,8 @@ class TestSharedNetworks(cloudstackTestCase):
 
         self.debug("Creating domain wide shared network for account: %s" %
                                                         account.account.name)
-        network_1 = self.create_Shared_Network(account, acltype="Zone")
-        network_2 = self.create_Shared_Network(account, acltype="Zone")
+        network_1 = self.create_Shared_Network(account, acltype="Domain")
+        network_2 = self.create_Shared_Network(account, acltype="Domain")
         self.debug("Verifying the shared network created: %s" % network_1.name)
         self.validate_Shared_Network(network_1)
         self.debug("Verifying the shared network created: %s" % network_2.name)
@@ -687,14 +783,14 @@ class TestSharedNetworks(cloudstackTestCase):
         del network_config["vlan"]
 
         with self.assertRaises(Exception):
-            self.create_Shared_Network(account, acltype="Zone",
+            self.create_Shared_Network(account, acltype="Domain",
                                                     services=network_config)
         self.debug("Creating shared network without guest gateway")
         network_config = self.services["network"]
         self.debug("Removing gateway from network config")
         del network_config["gateway"]
         with self.assertRaises(Exception):
-            self.create_Shared_Network(account, acltype="Zone",
+            self.create_Shared_Network(account, acltype="Domain",
                                                     services=network_config)
 
         self.debug("Creating shared network without guest netmask")
@@ -702,7 +798,7 @@ class TestSharedNetworks(cloudstackTestCase):
         self.debug("Removing netmask from network config")
         del network_config["netmask"]
         with self.assertRaises(Exception):
-            self.create_Shared_Network(account, acltype="Zone",
+            self.create_Shared_Network(account, acltype="Domain",
                                                     services=network_config)
 
         self.debug("Creating shared network without guest start IP")
@@ -710,7 +806,7 @@ class TestSharedNetworks(cloudstackTestCase):
         self.debug("Removing startip from network config")
         del network_config["startip"]
         with self.assertRaises(Exception):
-            self.create_Shared_Network(account, acltype="Zone",
+            self.create_Shared_Network(account, acltype="Domain",
                                                     services=network_config)
 
         self.debug("Creating shared network without guest end IP")
@@ -718,12 +814,12 @@ class TestSharedNetworks(cloudstackTestCase):
         self.debug("Removing endip from network config")
         del network_config["endip"]
         with self.assertRaises(Exception):
-            self.create_Shared_Network(account, acltype="Zone",
+            self.create_Shared_Network(account, acltype="Domain",
                                                     services=network_config)
         return
 
     @attr(tags=["advancedsg"])
-    def test_11_create_shared_nw_reuse_zone_vpc(self):
+    def test_11_create_shared_nw_reuse_zone_vlan(self):
         """Test Admin should be allowed to add a Shared Network with a VlanId
             that is already associated with Zone vlan"""
 
@@ -742,7 +838,7 @@ class TestSharedNetworks(cloudstackTestCase):
 
         self.debug("Creating domain wide shared network for account: %s" %
                                                         account.account.name)
-        network_1 = self.create_Shared_Network(account, acltype="Zone")
+        network_1 = self.create_Shared_Network(account, acltype="Domain")
         network_2 = self.create_Shared_Network(account, acltype="Account")
         self.debug("Verifying the shared network created: %s" % network_1.name)
         self.validate_Shared_Network(network_1)
@@ -751,7 +847,6 @@ class TestSharedNetworks(cloudstackTestCase):
 
         # Cleanup the networks created
         self.cleanup_networks.append(network_1)
-        self.cleanup_networks.append(network_2)
         return
 
     @attr(tags=["advancedsg"])
@@ -799,7 +894,6 @@ class TestSharedNetworks(cloudstackTestCase):
         self.debug("Verifying the shared network created: %s" % network.name)
 
         self.validate_Shared_Network(network)
-        self.cleanup_networks.append(network)
         return
 
     @attr(tags=["advancedsg"])
@@ -835,8 +929,8 @@ class TestSharedNetworks(cloudstackTestCase):
 
         self.debug("Creating domain wide shared network for account: %s" %
                                                         account_1.account.name)
-        network_1 = self.create_Shared_Network(account_1, acltype="Zone")
-        network_2 = self.create_Shared_Network(account_2, acltype="Zone")
+        network_1 = self.create_Shared_Network(account_1, acltype="Domain")
+        network_2 = self.create_Shared_Network(account_2, acltype="Domain")
         self.debug("Verifying the shared network created: %s" % network_1.name)
         self.validate_Shared_Network(network_1)
         self.debug("Verifying the shared network created: %s" % network_2.name)
@@ -848,8 +942,8 @@ class TestSharedNetworks(cloudstackTestCase):
 
         self.debug("Deplying VMs in the networks: %s & %s" % (network_1.name,
                                                               network_2.name))
-        self.create_Instance(account=account_2, networks=[network_1.id])
-        self.create_Instance(account=account_1, networks=[network_2.id])
+        self.create_Instance(account=account_1, networks=[network_1.id])
+        self.create_Instance(account=account_2, networks=[network_2.id])
         return
 
     @attr(tags=["advancedsg"])
@@ -904,24 +998,18 @@ class TestSharedNetworks(cloudstackTestCase):
         self.debug("Verifying the shared network created: %s" % network_3.name)
         self.validate_Shared_Network(network_3)
 
-        # Cleanup the networks created
-        self.cleanup_networks.append(network_1)
-        self.cleanup_networks.append(network_2)
-        self.cleanup_networks.append(network_3)
-
         self.debug(
             "Deplying VMs in the networks %s, %s & %s" % (network_1.name,
                                                           network_2.name,
                                                           network_3.name))
-        self.create_Instance(account=account_1, networks=[network_1.id])
-        self.create_Instance(account=account_2, networks=[network_2.id])
-        self.debug("Creating instance in account 3 %s using network 2 %s" %
-                                    (account_3.account.name, network_2.name))
-        with self.assertRaises(Exception):
-            self.create_Instance(account=account_3, networks=[network_2.id])
+        vm = self.create_Instance(account=account_1, networks=[network_1.id])
+        self.cleanup_vms.append(vm) 
+        vm = self.create_Instance(account=account_2, networks=[network_2.id])
+        self.cleanup_vms.append(vm) 
         return
 
     @attr(tags=["advancedsg"])
+    @unittest.skip("Work in progress")
     def test_15_deply_vm_in_domain_wide_nw(self):
         """Test ADV zone SG enabled multiple shared nw domain wide, Only Users
         in accounts of that domain allowed to deploy VMs to that shared nw"""
@@ -964,17 +1052,420 @@ class TestSharedNetworks(cloudstackTestCase):
         self.debug("Verifying the shared network created: %s" % network_2.name)
         self.validate_Shared_Network(network_2)
 
-        # Cleanup the networks created
-        self.cleanup_networks.append(network_1)
-        self.cleanup_networks.append(network_2)
-
         self.debug(
             "Deplying VMs in the networks %s & %s" % (network_1.name,
                                                           network_2.name))
-        self.create_Instance(account=account_1, networks=[network_1.id])
-        self.create_Instance(account=account_2, networks=[network_2.id])
-        self.debug("Creating instance in domain 1 %s using network 2 %s" %
-                                            (domain_1.name, network_2.name))
+        vm = self.create_Instance(account=account_1, networks=[network_1.id])
+        self.cleanup_vms.append(vm)
+        vm = self.create_Instance(account=account_2, networks=[network_2.id])
+        self.cleanup_vms.append(vm)
+        return
+
+    @attr(tags=["advancedsg"])
+    @unittest.skip("Work in progress")
+    def test_16_delete_account(self):
+        """Test -In advance zone SG enabled, delete account which has shared
+            networks scope account """
+
+        # Steps for validation
+        # 1. Create Advance  zone SG enabled
+        # 2. Add domain d1 user d1domain acct d1domainA role domainadmin domain
+        #    d2 userd2user acct d2userA role user
+        # 3. Create a guest networks scope account account d1domainA with
+        #    network offering shared
+        # 4. Create a guest networks scope account account d2userA with network
+        #    offering shared
+        # 5. login d1domain  create VMs. loout. login admin delete account
+        #    d1domainA
+        # Validate the follwing
+        # 1. guest netowork for account d1domainA added
+        # 2. guest netowork for account d2userA added
+        # 3. account d1domainA, all its VMs, shared networks deleted
+
+        self.debug("Creating a domain in zone: %s" % self.zone.name)
+        domain_1 = self.create_Domain()
+        self.cleanup_domains.append(domain_1)
+        self.debug("Creating account in domain: %s" % domain_1.name)
+        account_1 = Account.create(self.apiclient, self.services["account"],
+                                 admin=True, domainid=domain_1.id)
+        self.cleanup_accounts.append(account_1)
+
+        self.debug("Creating a domain in zone: %s" % self.zone.name)
+        domain_2 = self.create_Domain()
+        self.cleanup_domains.append(domain_2)
+        self.debug("Creating account in domain: %s" % domain_2.name)
+        account_2 = Account.create(self.apiclient, self.services["account"],
+                                   admin=False, domainid=domain_2.id)
+        self.cleanup_accounts.append(account_2)
+
+        self.debug("Creating account wide shared network for account: %s" %
+                                                        account_1.account.name)
+        network_11 = self.create_Shared_Network(account_1, acltype="Account")
+
+        self.debug("Verifying the shared network created: %s" % network_11.name)
+        self.validate_Shared_Network(network_11)
+
+        self.debug("Creating account wide shared network for account: %s" %
+                                                        account_2.account.name)
+        network_21 = self.create_Shared_Network(account_2, acltype="Account")
+
+        self.debug("Verifying the shared network created: %s" %
+                                                            network_21.name)
+        self.validate_Shared_Network(network_21)
+
+        # Cleanup the networks created
+        self.cleanup_networks.append(network_11)
+        self.cleanup_networks.append(network_21)
+
+        self.debug("Deplying VMs in the networks %s & %s" % network_21.name)
+        self.create_Instance(account=account_2, networks=[network_21.id])
+
+        self.debug("Creating API client for user: %s" % account_1.account.name)
+        api_client = self.testClient.createUserApiClient(
+                                    UserName=account_1.account.name,
+                                    DomainName=account_1.account.domain)
+        self.debug("Deleting account %s from account %s" %
+                                        (account_2.account.name,
+                                         account_1.account.name))
+        try:
+            account_2.delete(api_client)
+        except Exception as e:
+            self.fail("Failed to delete account: %s" % e)
+        return
+
+    @attr(tags=["advancedsg"])
+    @unittest.skip("Work in progress")
+    def test_17_deploy_vm_custom_sec_group(self):
+        """Test - DeployVM with CustomSG with shared network"""
+
+        # Steps for validation
+        # 1. Create SG enabled Advance zone
+        # 2. create a  custmer network offering with SG
+        # 3. Create Shared GuestNetwork
+        # 4. deployVM by passing  custom SG id and Shared network ID.
+        # 5. deployVM by passing first SG enabled Advanced Zone ID
+        # Validate the following
+        # 1. VM deployment should be successful
+        # 2. its should fail  and shows error messge like "errortext":
+        #    Only support one network per VM if security group enabled"
+
+        self.debug("Creating account in domain: %s" % self.domain.name)
+        account = Account.create(self.apiclient, self.services["account"],
+                                 admin=True, domainid=self.domain.id)
+        self.cleanup_accounts.append(account)
+        self.debug("Create a security group in account %s" %
+                                                        account.account.name)
+
+        sec_group = self.create_Sec_Group(account=account)
+
+        self.debug("Creating account wide shared network for account: %s" %
+                                                        account.account.name)
+        network = self.create_Shared_Network(account, acltype="Account")
+
+        self.debug("Verifying the shared network created: %s" % network.name)
+        self.validate_Shared_Network(network)
+
+        # Cleanup the networks created
+        self.cleanup_networks.append(network)
+
+        self.debug("Deplying VMs in the networks %s & %s" % network.name)
+        self.create_Instance(account=account, networks=[network.id],
+                             sec_grps=[sec_group.id])
+
+        self.debug("Creating account wide shared network for account: %s" %
+                                                        account.account.name)
+        network_2 = self.create_Shared_Network(account, acltype="Account")
+
+        self.debug("Verifying the shared network created: %s" % network_2.name)
+        self.validate_Shared_Network(network_2)
+        self.cleanup_networks.append(network_2)
+        self.debug("Deplying VMs in 2 networks %s & %s with sec groups" %
+                                                (network.name, network_2.name))
+
         with self.assertRaises(Exception):
-            self.create_Instance(account=account_1, networks=[network_2.id])
+            self.create_Instance(account=account,
+                                 networks=[network.id, network_2.id],
+                                 sec_grps=[sec_group.id])
+        return
+
+    @attr(tags=["advancedsg"])
+    @unittest.skip("Work in progress")
+    def test_18_deploy_vm_multiple_shared_nws(self):
+        """Test-Deplpoy VM with more than 1 Nic  with shared networks"""
+
+        # Steps for validation
+        # 1. Deply vm in multiple shared networks in adv sec group zone
+        # Validate the following
+        # 1. Deploy VM should be successful
+
+        self.debug("Creating account in domain: %s" % self.domain.name)
+        account = Account.create(self.apiclient, self.services["account"],
+                                 admin=True, domainid=self.domain.id)
+        self.cleanup_accounts.append(account)
+
+        self.debug("Creating account wide shared network for account: %s" %
+                                                        account.account.name)
+        network = self.create_Shared_Network(account, acltype="Account")
+
+        self.debug("Verifying the shared network created: %s" % network.name)
+        self.validate_Shared_Network(network)
+
+        # Cleanup the networks created
+        self.cleanup_networks.append(network)
+
+        self.debug("Creating account wide shared network for account: %s" %
+                                                        account.account.name)
+        network_2 = self.create_Shared_Network(account, acltype="Account")
+
+        self.debug("Verifying the shared network created: %s" % network_2.name)
+        self.validate_Shared_Network(network_2)
+        self.cleanup_networks.append(network_2)
+        self.debug("Deplying VMs in 2 networks %s & %s" %
+                                                (network.name, network_2.name))
+        self.create_Instance(account=account, networks=[network.id,
+                                                        network_2.id])
+        return
+
+    @attr(tags=["advancedsg"])
+    @unittest.skip("Work in progress")
+    def test_19_network_rules_with_vm_start_stop(self):
+        """Test-Stop/Start/reboot/destroy/restore/expunge the VMs"""
+
+        # Steps for validation
+        # 1. Create an account
+        # 2. Using this account, Deploy few Vms in the "Zone wide shared SG
+        #    enabled" network
+        # 3. Add a TCP ingress rule  for a port range (22-80) for any ipaddress
+        #    (cidr2).
+        # 4. Deploy vms inthis network
+        # 5. access the VM using Guest IP
+        # 6. stop and start the VM
+        # 7. Reboot  the VM
+        # 8. Destroy and resore VM
+        # 9. Migrate VM to another host
+        # 10. Destroy and expunge VM
+        # Validate the following
+        # 7. VM should be Up and running, all the rules existing rules should
+        #    programmed correctly
+        # 10. All the rules belongs to expunged VM should be removed/free
+
+        self.debug("Creating account in domain: %s" % self.domain.name)
+        account = Account.create(self.apiclient, self.services["account"],
+                                 admin=True, domainid=self.domain.id)
+        self.cleanup_accounts.append(account)
+        self.debug("Creating account wide shared network for account: %s" %
+                                                        account.account.name)
+        network = self.create_Shared_Network(account, acltype="Domain")
+        self.debug("Create a security group in account %s" %
+                                                        account.account.name)
+        sec_group = self.create_Sec_Group(account=account)
+
+        self.debug("Verifying the shared network created: %s" % network.name)
+        self.validate_Shared_Network(network)
+        self.cleanup_networks.append(network)
+
+        self.debug("Deplying VMs in network %s" % network.name)
+        vm = self.create_Instance(account=account, networks=[network.id],
+                            sec_groups=sec_group)
+        self.debug("Creating and configuring ingress rules")
+        self.configure_Ingress(account, sec_group, self.services["ingress"])
+
+        self.debug("Stopping the instance: %s" % vm.name)
+        vm.stop(self.apiclient)
+        self.debug("Starting the instance: %s" % vm.name)
+        vm.start(self.apiclient)
+        self.debug("Checking if VM is still accessible?")
+        self.validate_Ingress_Rule(vm)
+        self.debug("Reboot the instance: %s" % vm.name)
+        vm.reboot(self.apiclient)
+        self.debug("Checking if VM is still accessible?")
+        self.validate_Ingress_Rule(vm)
+
+        self.debug("Destroy the instance: %s" % vm.name)
+        vm.delete(self.apiclient)
+        self.debug("Recovering the instance: %s" % vm.name)
+        vm.recover(self.apiclient)
+        self.debug("Checking if VM is still accessible?")
+        self.validate_Ingress_Rule(vm)
+
+        host = self.find_Suitable_Host(vm)
+        self.debug("Migrating instance: %s to host: %s" % (vm.name, host.name))
+        try:
+            vm.migrate(self.apiclient, host.id)
+        except Exception as e:
+            self.fail("Failed to migrate instance: %s" % e)
+        self.validate_Ingress_Rule(vm)
+
+        self.debug("Destroy the instance: %s" % vm.name)
+        vm.delete(self.apiclient)
+
+        self.debug("Waiting for expunge interval")
+        wait_for_cleanup(self.apiclient, ["expunge.delay",
+                                           "expunge.interval"])
+        with self.assertRaises(Exception):
+            vm.get_ssh_client()
+        return
+
+    @attr(tags=["advancedsg"])
+    @unittest.skip("Work in progress")
+    def test_20_create_network_without_vlan(self):
+        """Test Check creation of default SG enable network without VLAN"""
+
+        # Steps for validation
+        # 1. Check creation of default SG enable network without VLAN
+        # Validate the following
+        # 1. Creation shoud be failed with proper error message
+
+        self.debug("Creating account in domain: %s" % self.domain.name)
+        account = Account.create(self.apiclient, self.services["account"],
+                                 admin=True, domainid=self.domain.id)
+        self.cleanup_accounts.append(account)
+        self.debug("Creating shared network for account: %s without vlan" %
+                                                        account.account.name)
+        services = {"name": "MySharedNetwork - Test",
+                    "displaytext": "MySharedNetwork",
+                    "gateway": "172.16.15.1",
+                    "netmask": "255.255.255.0",
+                    "startip": "172.16.15.2",
+                    "endip": "172.16.15.20",
+                    "acltype": "Domain",
+                    "scope": "all"}
+        with self.assertRaises(Exception):
+            self.create_Shared_Network(account, acltype="Account",
+                                       services=services)
+        return
+
+    @attr(tags=["advancedsg"])
+    @unittest.skip("Work in progress")
+    def test_21_delete_default_sec_group(self):
+        """Test Delete the default security groups"""
+
+        # Steps for validation
+        # 1. Delete the default SG
+        # Validate the following
+        # 1. Delete SG group should be successful if no VMS asiiocated with
+        #    default SG
+
+        self.debug("Creating account in domain: %s" % self.domain.name)
+        account = Account.create(self.apiclient, self.services["account"],
+                                 admin=True, domainid=self.domain.id)
+        self.cleanup_accounts.append(account)
+        self.debug("Creating shared network for account: %s" %
+                                                        account.account.name)
+        network = self.create_Shared_Network(account, acltype="Account")
+
+        self.debug(
+            "Fetching details of default security group in network: %s" %
+                                                                network.name)
+        sec_grps = SecurityGroup.list(self.apiclient,
+                                      account=account.account.name,
+                                      domainid=account.account.domainid,
+                                      listall=True)
+        self.assertIsInstance(sec_grps, list,
+                              "List sec groups should return a valid resposne")
+        default = sec_grps[0]
+        self.debug("Remiving the defualt security group")
+        try:
+            cmd = deleteSecurityGroup.deleteSecurityGroupCmd()
+            cmd.id = default.id
+            self.apiclient.deleteSecurityGroup(cmd)
+        except Exception as e:
+            self.fail("Failed to delete default security group: %s" % e)
+        return
+
+    @attr(tags=["advancedsg"])
+    @unittest.skip("Work in progress")
+    def test_22_attach_iso_shared_nw(self):
+        """Test - Attach ISO to VM in shared network scope account"""
+
+        # Steps for validation
+        # 1. Attach ISO to VM in shared network scope account
+        # 2. Detach ISO from VM in shared network scope account
+        # Validate the following
+        # 1. Attach ISO to VM in shared network scope account successful
+        # 2. Detach ISO from VM in shared network scope account successful
+
+        self.debug("Creating account in domain: %s" % self.domain.name)
+        account = Account.create(self.apiclient, self.services["account"],
+                                 admin=True, domainid=self.domain.id)
+        self.cleanup_accounts.append(account)
+
+        self.debug("Creating account wide shared network for account: %s" %
+                                                        account.account.name)
+        network = self.create_Shared_Network(account, acltype="Account")
+
+        self.debug("Verifying the shared network created: %s" % network.name)
+        self.validate_Shared_Network(network)
+
+        # Cleanup the networks created
+        self.cleanup_networks.append(network)
+
+        self.debug("Deplying VMs in the networks %s & %s" % network.name)
+        vm = self.create_Instance(account=account, networks=[network.id])
+
+        self.debug("Registering ISO in account: %s" % account.account.name)
+        iso = self.create_Iso(account)
+
+        self.debug("Attaching ISO %s to vm %s" % (iso.name, vm.name))
+        try:
+            vm.attach_iso(self.apiclient, iso)
+        except Exception as e:
+            self.fail("Failed to attach ISO: %s" % e)
+
+        self.debug("Detaching ISO %s to vm %s" % (iso.name, vm.name))
+        try:
+            vm.detach_iso(self.apiclient)
+        except Exception as e:
+            self.fail("Failed to detach ISO: %s" % e)
+        return
+
+    @attr(tags=["advancedsg"])
+    @unittest.skip("Work in progress")
+    def test_23_attach_iso_sec_grp_nw(self):
+        """Test - Attach ISO to VM in shared network SG enabled"""
+
+        # Steps for validation
+        # 1. Attach ISO to VM in shared network SG enabled
+        # 2. Detach ISO from VM in shared network SG enabled
+        # Validate the following
+        # 1. Attach ISO to VM in shared network SG enabled account successful
+        # 2. Detach ISO from VM in shared network SG enabled successful
+
+        self.debug("Creating account in domain: %s" % self.domain.name)
+        account = Account.create(self.apiclient, self.services["account"],
+                                 admin=True, domainid=self.domain.id)
+        self.cleanup_accounts.append(account)
+
+        self.debug("Creating account wide shared network for account: %s" %
+                                                        account.account.name)
+        network = self.create_Shared_Network(account, acltype="Account")
+
+        self.debug("Verifying the shared network created: %s" % network.name)
+        self.validate_Shared_Network(network)
+
+        self.debug("Create a security group in account %s" %
+                                                        account.account.name)
+        sec_group = self.create_Sec_Group(account=account)
+
+        # Cleanup the networks created
+        self.cleanup_networks.append(network)
+
+        self.debug("Deplying VMs in the networks %s & %s" % network.name)
+        vm = self.create_Instance(account=account, networks=[network.id],
+                                  sec_grps=[sec_group.id])
+
+        self.debug("Registering ISO in account: %s" % account.account.name)
+        iso = self.create_Iso(account)
+
+        self.debug("Attaching ISO %s to vm %s" % (iso.name, vm.name))
+        try:
+            vm.attach_iso(self.apiclient, iso)
+        except Exception as e:
+            self.fail("Failed to attach ISO: %s" % e)
+
+        self.debug("Detaching ISO %s to vm %s" % (iso.name, vm.name))
+        try:
+            vm.detach_iso(self.apiclient)
+        except Exception as e:
+            self.fail("Failed to detach ISO: %s" % e)
         return
