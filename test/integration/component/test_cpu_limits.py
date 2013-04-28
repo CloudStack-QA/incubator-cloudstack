@@ -10,7 +10,9 @@ from marvin.integration.lib.base import (
                                         VirtualMachine,
                                         Network,
                                         Resources,
-                                        Host
+                                        Host,
+                                        Domain,
+                                        Project
                                         )
 from marvin.integration.lib.common import (get_domain,
                                         get_zone,
@@ -71,7 +73,6 @@ class Services:
                     }
 
 
-@unittest.skip("Skipping - Work in progress")
 class TestCPULimits(cloudstackTestCase):
 
     @classmethod
@@ -318,7 +319,7 @@ class TestCPULimits(cloudstackTestCase):
         self.check_Resource_Count(account=self.account, rtype=9)
         return
 
-
+@unittest.skip("Skip - Work in progress")
 class TestDomainCPULimits(cloudstackTestCase):
 
     @classmethod
@@ -616,6 +617,7 @@ class TestDomainCPULimits(cloudstackTestCase):
         return
 
 
+@unittest.skip("Skip - Work in progress")
 class TestCPULimitsUpdateResources(cloudstackTestCase):
 
     @classmethod
@@ -918,6 +920,7 @@ class TestCPULimitsUpdateResources(cloudstackTestCase):
         return
 
 
+@unittest.skip("Skip - Work in progress")
 class TestMultipleChildDomains(cloudstackTestCase):
 
     @classmethod
@@ -1179,6 +1182,7 @@ class TestMultipleChildDomains(cloudstackTestCase):
         return
 
 
+@unittest.skip("Skip - Work in progress")
 class TestProjectsCPULimits(cloudstackTestCase):
 
     @classmethod
@@ -1416,6 +1420,7 @@ class TestProjectsCPULimits(cloudstackTestCase):
         return
 
 
+@unittest.skip("Skip - Work in progress")
 class TestMaxCPULimits(cloudstackTestCase):
 
     @classmethod
@@ -1462,8 +1467,8 @@ class TestMaxCPULimits(cloudstackTestCase):
             raise Exception("Warning: Exception during cleanup : %s" % e)
         return
 
-    def create_Instance(self, account=None,
-                        project=None, service_off, networks=None):
+    def create_Instance(self, service_off, account=None,
+                        project=None, networks=None):
         """Creates an instance in account"""
         self.debug("Deploying an instance in account: %s" %
                                                 self.account.account.name)
