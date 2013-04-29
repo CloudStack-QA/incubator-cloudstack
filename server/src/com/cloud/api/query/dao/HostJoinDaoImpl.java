@@ -99,6 +99,7 @@ public class HostJoinDaoImpl extends GenericDaoBase<HostJoinVO, Long> implements
             hostResponse.setOsCategoryId(host.getOsCategoryUuid());
             hostResponse.setOsCategoryName(host.getOsCategoryName());
             hostResponse.setZoneName(host.getZoneName());
+            hostResponse.setZoneType(host.getZoneType().toString());
             hostResponse.setPodName(host.getPodName());
             if ( host.getClusterId() > 0) {
                 hostResponse.setClusterName(host.getClusterName());
@@ -182,8 +183,10 @@ public class HostJoinDaoImpl extends GenericDaoBase<HostJoinVO, Long> implements
         hostResponse.setResourceState(host.getResourceState().toString());
 
         // set async job
-        hostResponse.setJobId(host.getJobUuid());
-        hostResponse.setJobStatus(host.getJobStatus());
+        if (host.getJobId() != null) {
+            hostResponse.setJobId(host.getJobUuid());
+            hostResponse.setJobStatus(host.getJobStatus());
+        }
 
         hostResponse.setObjectName("host");
 
