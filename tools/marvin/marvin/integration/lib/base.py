@@ -3045,3 +3045,46 @@ class ASA1000V:
         cmd = listCiscoAsa1000vResources.listCiscoAsa1000vResourcesCmd()
         [setattr(cmd, k, v) for k, v in kwargs.items()]
         return(apiclient.listCiscoAsa1000vResources(cmd))
+
+
+class Region:
+    """ Regions related Api """
+    def __init__(self, items):
+        self.__dict__.update(items)
+
+    @classmethod
+    def create(cls, apiclient, services):
+        cmd = addRegion.addRegionCmd()
+        cmd.id = services["regionid"]
+        cmd.endpoint = services["regionendpoint"]
+        cmd.name = services["regionname"]
+        try:
+            region = apiclient.addRegion(cmd)
+            if region is not None:
+                return Region(region.__dict__)
+        except Exception as e:
+            raise e
+
+    @classmethod
+    def list(cls, apiclient, **kwargs):
+        cmd = listRegions.listRegionsCmd()
+        [setattr(cmd, k, v) for k, v in kwargs.items()]
+        region = apiclient.listRegions(cmd)
+        return region
+
+    def update(self, apiclient, services):
+        cmd = updateRegion.updateRegionCmd()
+        cmd.id = self.id
+        if services["regionendpoint"]:
+                cmd.endpoint = services["regionendpoint"]
+        if services["regionname"]:
+                cmd.name = services["regionname"]
+        region = apiclient.updateRegion(cmd)
+        return region
+
+    def delete(self, apiclient):
+        cmd = removeRegion.removeRegionCmd()
+        cmd.id = self.id
+        region = apiclient.removeRegion(cmd)
+        return region
+
