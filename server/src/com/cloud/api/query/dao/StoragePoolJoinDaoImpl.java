@@ -77,6 +77,7 @@ public class StoragePoolJoinDaoImpl extends GenericDaoBase<StoragePoolJoinVO, Lo
         poolResponse.setIpAddress(pool.getHostAddress());
         poolResponse.setZoneId(pool.getZoneUuid());
         poolResponse.setZoneName(pool.getZoneName());
+        poolResponse.setZoneType(pool.getZoneType());
         if (pool.getPoolType() != null) {
             poolResponse.setType(pool.getPoolType().toString());
         }
@@ -102,8 +103,10 @@ public class StoragePoolJoinDaoImpl extends GenericDaoBase<StoragePoolJoinVO, Lo
         poolResponse.setTags(pool.getTag());
 
         // set async job
-        poolResponse.setJobId(pool.getJobUuid());
-        poolResponse.setJobStatus(pool.getJobStatus());
+        if (pool.getJobId() != null) {
+            poolResponse.setJobId(pool.getJobUuid());
+            poolResponse.setJobStatus(pool.getJobStatus());
+        }
 
         poolResponse.setObjectName("storagepool");
         return poolResponse;
