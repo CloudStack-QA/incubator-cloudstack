@@ -106,7 +106,7 @@ class Account:
     def delete(self, apiclient):
         """Delete an account"""
         cmd = deleteAccount.deleteAccountCmd()
-        cmd.id = self.account.id
+        cmd.id = self.id
         apiclient.deleteAccount(cmd)
 
     @classmethod
@@ -224,7 +224,8 @@ class VirtualMachine:
     def create(cls, apiclient, services, templateid=None, accountid=None,
                     domainid=None, zoneid=None, networkids=None, serviceofferingid=None,
                     securitygroupids=None, projectid=None, startvm=None,
-                    diskofferingid=None, affinitygroupnames=None, hostid=None, mode='basic'):
+                    diskofferingid=None, affinitygroupnames=None, group=None,
+                    hostid=None, keypair=None, mode='basic', method='GET'):
         """Create the instance"""
 
         cmd = deployVirtualMachine.deployVirtualMachineCmd()
@@ -279,8 +280,6 @@ class VirtualMachine:
         if securitygroupids:
             cmd.securitygroupids = [str(sg_id) for sg_id in securitygroupids]
 
-        if "userdata" in services:
-            cmd.userdata = base64.b64encode(services["userdata"])
 
         if "affinitygroupnames" in services:
             cmd.affinitygroupnames  = services["affinitygroupnames"]
@@ -295,6 +294,11 @@ class VirtualMachine:
 
         if hostid:
             cmd.hostid = hostid
+
+        if "userdata" in services:
+            cmd.userdata = base64.b64encode(services["userdata"])
+
+        virtual_machine = apiclient.deployVirtualMachine(cmd, method=method)
 
         if group:
             cmd.group = group
@@ -1764,7 +1768,7 @@ class Network:
 
     @classmethod
     def create(cls, apiclient, services, accountid=None, domainid=None,
-               networkofferingid=None, projectid=None, 
+               networkofferingid=None, projectid=None,
                subdomainaccess=None, zoneid=None,
                gateway=None, netmask=None, vpcid=None, guestcidr=None):
         """Create Network for account"""
@@ -3041,3 +3045,46 @@ class ASA1000V:
         cmd = listCiscoAsa1000vResources.listCiscoAsa1000vResourcesCmd()
         [setattr(cmd, k, v) for k, v in kwargs.items()]
         return(apiclient.listCiscoAsa1000vResources(cmd))
+
+
+class Region:
+    """ Regions related Api """
+    def __init__(self, items):
+        self.__dict__.update(items)
+
+    @classmethod
+    def create(cls, apiclient, services):
+        cmd = addRegion.addRegionCmd()
+        cmd.id = services["regionid"]
+        cmd.endpoint = services["regionendpoint"]
+        cmd.name = services["regionname"]
+        try:
+            region = apiclient.addRegion(cmd)
+            if region is not None:
+                return Region(region.__dict__)
+        except Exception as e:
+            raise e
+
+    @classmethod
+    def list(cls, apiclient, **kwargs):
+        cmd = listRegions.listRegionsCmd()
+        [setattr(cmd, k, v) for k, v in kwargs.items()]
+        region = apiclient.listRegions(cmd)
+        return region
+
+    def update(self, apiclient, services):
+        cmd = updateRegion.updateRegionCmd()
+        cmd.id = self.id
+        if services["regionendpoint"]:
+                cmd.endpoint = services["regionendpoint"]
+        if services["regionname"]:
+                cmd.name = services["regionname"]
+        region = apiclient.updateRegion(cmd)
+        return region
+
+    def delete(self, apiclient):
+        cmd = removeRegion.removeRegionCmd()
+        cmd.id = self.id
+        region = apiclient.removeRegion(cmd)
+        return region
+
