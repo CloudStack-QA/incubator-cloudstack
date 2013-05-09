@@ -257,7 +257,7 @@ class TestVPCOffering(cloudstackTestCase):
         self.debug("VPC network created successfully - %s" % network.name)
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     def test_01_create_vpc_offering(self):
         """ Test create VPC offering
         """
@@ -277,7 +277,7 @@ class TestVPCOffering(cloudstackTestCase):
         self.validate_vpc_offering(vpc_off)
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     @unittest.skip("Skipping - Issue: Deleting account doesn't clean VPC")
     def test_02_deploy_vms_in_vpc_nw(self):
         """Test deploy virtual machines in VPC networks"""
@@ -538,7 +538,7 @@ class TestVPCOffering(cloudstackTestCase):
 #                                                self.account.account.name)
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     def test_03_vpc_off_without_lb(self):
         """Test VPC offering without load balancing service"""
 
@@ -659,7 +659,7 @@ class TestVPCOffering(cloudstackTestCase):
                                 )
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     def test_04_vpc_off_without_static_nat(self):
         """Test VPC offering without static NAT service"""
 
@@ -778,7 +778,7 @@ class TestVPCOffering(cloudstackTestCase):
                               )
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     def test_05_vpc_off_without_pf(self):
         """Test VPC offering without port forwarding service"""
 
@@ -896,7 +896,7 @@ class TestVPCOffering(cloudstackTestCase):
                         )
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     @unittest.skip("Skipping - API should not allow to create VPC offering without SourceNAT, Firewall")
     def test_06_vpc_off_invalid_services(self):
         """Test VPC offering with invalid services"""
@@ -941,7 +941,7 @@ class TestVPCOffering(cloudstackTestCase):
             self.fail("Failed to create the VPC offering - %s" % e)
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     def test_07_update_vpc_off(self):
         """Test update VPC offering"""
 
@@ -1030,7 +1030,7 @@ class TestVPCOffering(cloudstackTestCase):
                          )
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     def test_08_list_vpc_off(self):
         """Test list VPC offering"""
 

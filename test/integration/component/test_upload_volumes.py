@@ -63,7 +63,7 @@ class Services:
                         },
                         "volume": {
                                 "diskname": "UploadedVolume",
-                                "url": "http://192.168.100.21/images/upload_1_gb.vhd",
+                                "url": "http://10.147.28.7/templates/centos5.5hvm.vhd.gz",
                                 "format": 'VHD',
                         },
                         "volumes": {
@@ -77,7 +77,7 @@ class Services:
                             "xenserver": {
                                 0: {
                                      "diskname": "Volume_VHD_Format",
-                                     "url": "http://192.168.100.21/images/upload_1_gb.vhd",
+                                     "url": "http://10.147.28.7/templates/centos5.5hvm.vhd.gz",
                                      "format": 'VHD',
                                      },
                                 },
@@ -94,7 +94,7 @@ class Services:
                          },
                         "sleep": 50,
                         "ostype": 'CentOS 5.3 (64-bit)',
-                        "mode": 'basic',
+                        "mode": 'advanced',
                     }
 
 

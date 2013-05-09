@@ -184,7 +184,7 @@ class TestSnapshots(cloudstackTestCase):
 
     @attr(tags = ["advanced", "advancedns"])
     def test_01_volume_from_snapshot(self):
-        """TS_BUG_001-Test Creating snapshot from volume having spaces in name(KVM)
+        """TS_BUG_001-Test Creating snapshot from volume having spaces in name(XenServer)
         """
 
 

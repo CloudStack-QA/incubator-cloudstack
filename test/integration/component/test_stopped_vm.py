@@ -78,7 +78,7 @@ class Services:
                 {
                     "displaytext": "Test ISO",
                     "name": "testISO",
-                    "url": "http://iso.linuxquestions.org/download/504/1819/http/gd4.tuwien.ac.at/dsl-4.4.10.iso",
+                    "url": "http://10.147.28.7/isos_32bit/dsl-4.4.10.iso",
                      # Source URL where ISO is located
                     "ostype": 'CentOS 5.3 (64-bit)',
                     "mode": 'HTTP_DOWNLOAD',    # Downloading existing ISO

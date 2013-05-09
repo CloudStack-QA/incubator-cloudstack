@@ -43,7 +43,7 @@ class Services:
                                     "username": "test",
                                     # Random characters are appended for unique
                                     # username
-                                    "password": "fr3sca",
+                                    "password": "password",
                          },
                          "user": {
                                     "email": "user@test.com",
@@ -52,7 +52,7 @@ class Services:
                                     "username": "User",
                                     # Random characters are appended for unique
                                     # username
-                                    "password": "fr3sca",
+                                    "password": "password",
                          },
                          "service_offering": {
                                     "name": "Tiny Instance",
@@ -78,7 +78,7 @@ class Services:
                          "template": {
                                 "displaytext": "Public Template",
                                 "name": "Public template",
-                                "ostypeid": 'bc66ada0-99e7-483b-befc-8fb0c2129b70',
+                                "ostypeid": '28560276-b821-11e2-90e0-06b270000059',
                                 "url": "http://download.cloud.com/releases/2.0.0/UbuntuServer-10-04-64bit.vhd.bz2",
                                 "hypervisor": 'XenServer',
                                 "format": 'VHD',

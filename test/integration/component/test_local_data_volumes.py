@@ -38,7 +38,7 @@ class Services:
                                     "username": "test",
                                     # Random characters are appended for unique
                                     # username
-                                    "password": "fr3sca",
+                                    "password": "password",
                          },
                          "user": {
                                     "email": "user@test.com",
@@ -47,7 +47,7 @@ class Services:
                                     "username": "User",
                                     # Random characters are appended for unique
                                     # username
-                                    "password": "fr3sca",
+                                    "password": "password",
                          },
                          "service_offering": {
                                     "name": "Tiny Instance",

@@ -104,7 +104,7 @@ class Services:
                         {
                             "displaytext": "DSL ISO",
                             "name": "DSL ISO",
-                            "url": "http://iso.linuxquestions.org/download/504/1819/http/gd4.tuwien.ac.at/dsl-4.4.10.iso",
+                            "url": "http://10.147.28.7/isos_32bit/dsl-4.4.10.iso",
                             # Source URL where ISO is located
                             "isextractable": True,
                             "isfeatured": True,
@@ -265,7 +265,7 @@ class TestResourceTags(cloudstackTestCase):
 
         return
     
-    @attr(tags=["advanced"])
+    @attr(tags=["advanced","advancedns"])
     def test_01_lbrule_tag(self):
         """ Test Create tag on LB rule and remove the LB rule
         """
@@ -408,7 +408,7 @@ class TestResourceTags(cloudstackTestCase):
             self.fail("failed to delete load balancer rule! - %s" % e)
         return
 
-    @attr(tags=["advanced"])
+    @attr(tags=["advanced","advancedns"])
     def test_02_natrule_tag(self):
         """ Test Create tag on nat rule and remove the nat rule
         """
@@ -545,7 +545,7 @@ class TestResourceTags(cloudstackTestCase):
             self.fail("failed to delete port forwarding rule! - %s" % e)
         return
 
-    @attr(tags=["advanced"])
+    @attr(tags=["advanced","advancedns"])
     def test_03_firewallrule_tag(self):
         """ Test Create tag on firewall rule and remove the firewall rule
         """
@@ -688,7 +688,7 @@ class TestResourceTags(cloudstackTestCase):
             self.fail("failed to delete firewall rule! - %s" % e)
         return
 
-    @attr(tags=["advanced"])
+    @attr(tags=["advanced","advancedns"])
     @unittest.skip("Not supported in 3.0.5")
     def test_04_vpn_tag(self):
         """ Test Create tag on vpn and remove the vpn
@@ -840,7 +840,7 @@ class TestResourceTags(cloudstackTestCase):
             self.fail("failed to disable VPN! - %s" % e)
         return
 
-    @attr(tags=["advanced", "basic"])
+    @attr(tags=["advanced","advancedns", "basic"])
     def test_05_vm_tag(self):
         """ Test creation, listing and deletion tags on UserVM
         """
@@ -917,7 +917,7 @@ class TestResourceTags(cloudstackTestCase):
                          )
         return
 
-    @attr(tags=["advanced", "basic"])
+    @attr(tags=["advanced","advancedns", "basic"])
     def test_06_template_tag(self):
         """ Test creation, listing and deletion tag on templates
         """
@@ -1029,7 +1029,7 @@ class TestResourceTags(cloudstackTestCase):
                          )
         return
 
-    @attr(tags=["advanced", "basic"])
+    @attr(tags=["advanced","advancedns", "basic"])
     def test_07_iso_tag(self):
         """ Test creation, listing and deletion tags on ISO
         """
@@ -1125,7 +1125,7 @@ class TestResourceTags(cloudstackTestCase):
                          )
         return
 
-    @attr(tags=["advanced", "basic"])
+    @attr(tags=["advanced","advancedns", "basic"])
     def test_08_volume_tag(self):
         """ Test creation, listing and deletion tagson volume
         """
@@ -1214,7 +1214,7 @@ class TestResourceTags(cloudstackTestCase):
                          )
         return
 
-    @attr(tags=["advanced", "basic"])
+    @attr(tags=["advanced","advancedns", "basic"])
     def test_09_snapshot_tag(self):
         """ Test creation, listing and deletion tag son snapshot
         """
@@ -1323,7 +1323,7 @@ class TestResourceTags(cloudstackTestCase):
 
         return
 
-    @attr(tags=["advanced"])
+    @attr(tags=["advanced","advancedns"])
     def test_10_network_tag(self):
         """ Testcreation, listing and deletion tags on guest network
         """
@@ -1526,7 +1526,7 @@ class TestResourceTags(cloudstackTestCase):
                          )
         return
 
-    @attr(tags=["advanced", "basic"])
+    @attr(tags=["advanced","advancedns", "basic"])
     def test_13_tag_case_insensitive(self):
         """ Test to verify that tags are not case sensitive
         """
@@ -1607,7 +1607,7 @@ class TestResourceTags(cloudstackTestCase):
 
         return
 
-    @attr(tags=["advanced", "basic"])
+    @attr(tags=["advanced","advancedns", "basic"])
     def test_14_special_char_mutiple_tags(self):
         """ Test multiple tags and with special characters on same machine
         """
@@ -1676,7 +1676,7 @@ class TestResourceTags(cloudstackTestCase):
                        )
         return
 
-    @attr(tags=["advanced"])
+    @attr(tags=["advanced","advancedns"])
     def test_15_project_tag(self):
         """ Test creation, listing and deletion tags on projects
         """
@@ -1768,7 +1768,7 @@ class TestResourceTags(cloudstackTestCase):
                          )
         return
 
-    @attr(tags=["advanced", "basic"])
+    @attr(tags=["advanced","advancedns", "basic"])
     def test_16_query_tags_other_account(self):
         """ Test Query the tags from other account
         """
@@ -1860,7 +1860,7 @@ class TestResourceTags(cloudstackTestCase):
         
         return
 
-    @attr(tags=["advanced", "basic"])
+    @attr(tags=["advanced","advancedns", "basic"])
     def test_17_query_tags_admin_account(self):
         """ Test Query the tags from admin account
         """
@@ -1947,7 +1947,7 @@ class TestResourceTags(cloudstackTestCase):
         
         return
 
-    @attr(tags=["advanced", "basic"])
+    @attr(tags=["advanced","advancedns", "basic"])
     def test_18_invalid_list_parameters(self):
         """ Test listAPI with invalid tags parameter
         """
@@ -1985,7 +1985,7 @@ class TestResourceTags(cloudstackTestCase):
 
         return
 
-    @attr(tags=["advanced", "basic"])
+    @attr(tags=["advanced","advancedns", "basic"])
     def test_19_delete_add_same_tag(self):
         """ Test deletion and addition of same tag on a resource.
         """
@@ -2091,7 +2091,7 @@ class TestResourceTags(cloudstackTestCase):
             self.fail("Failed to delete the tag - %s" % e)
         return
 
-    @attr(tags=["advanced", "basic"])
+    @attr(tags=["advanced","advancedns", "basic"])
     def test_20_create_tags_multiple_resources(self):
         "Test creation of same tag on multiple resources"
 
@@ -2196,7 +2196,7 @@ class TestResourceTags(cloudstackTestCase):
 
         return
 
-    @attr(tags=["advanced", "basic"])
+    @attr(tags=["advanced","advancedns", "basic"])
     def test_21_create_tag_stopped_vm(self):
         "Test creation of tag on stopped vm."
 
@@ -2273,7 +2273,7 @@ class TestResourceTags(cloudstackTestCase):
             self.fail("Failed to delete the tag - %s" % e)
         return
 
-    @attr(tags=["advanced", "basic"])
+    @attr(tags=["advanced","advancedns", "basic"])
     def test_22_create_tag_destroyed_vm(self):
         "Test creation of tag on stopped vm."
 

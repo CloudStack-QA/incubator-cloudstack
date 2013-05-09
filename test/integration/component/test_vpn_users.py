@@ -69,7 +69,7 @@ class Services:
                                     "username": "root",
                                     "password": "password",
                                     "ssh_port": 22,
-                                    "hypervisor": 'KVM',
+                                    "hypervisor": 'XenServer',
                                     "privateport": 22,
                                     "publicport": 22,
                                     "protocol": 'TCP',
@@ -83,7 +83,7 @@ class Services:
                                    "publicport": 1701,
                                    "protocol": "UDP"
                                 },
-                        "ostype": 'CentOS 5.5 (64-bit)',
+                        "ostype": 'CentOS 5.3 (64-bit)',
                         "sleep": 60,
                         "timeout": 10,
                         # Networking mode: Advanced, Basic

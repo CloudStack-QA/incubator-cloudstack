@@ -80,6 +80,7 @@ class Services:
                         "cpunumber": 1,
                         "cpuspeed": 100,    # in MHz
                         "memory": 128,    # In MBs
+                        "storagetype": "shared"
                     },
                  "small":
                     {
@@ -90,6 +91,7 @@ class Services:
                         "cpunumber": 1,
                         "cpuspeed": 100,
                         "memory": 256,
+                        "storagetype": "shared" 
                     },
                 "medium":
                     {
@@ -100,6 +102,7 @@ class Services:
                         "cpunumber": 1,
                         "cpuspeed": 100,
                         "memory": 256,
+                        "storagetype": "shared"
                     }
                 },
                 "iso":    # ISO settings for Attach/Detach ISO tests
@@ -140,7 +143,7 @@ class TestDeployVM(cloudstackTestCase):
 
         #If local storage is enabled, alter the offerings to use localstorage
         #this step is needed for devcloud
-        if zone.localstorageenabled == True:
+        if zone.localstorageenabled == False:
             cls.services["service_offerings"]["tiny"]["storagetype"] = 'local'
             cls.services["service_offerings"]["small"]["storagetype"] = 'local'
             cls.services["service_offerings"]["medium"]["storagetype"] = 'local'

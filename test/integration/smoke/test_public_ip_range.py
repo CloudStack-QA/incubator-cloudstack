@@ -96,7 +96,7 @@ class TesDedicatePublicIPRange(cloudstackTestCase):
             raise Exception("Warning: Exception during cleanup : %s" % e)
         return
 
-    @attr(tags = ["simulator", "publiciprange", "dedicate", "release"])
+    @attr(tags = ["advanced","simulator", "publiciprange", "dedicate", "release"])
     def test_dedicatePublicIpRange(self):
         """Test public IP range dedication
         """

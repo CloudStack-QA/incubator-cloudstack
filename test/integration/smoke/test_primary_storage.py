@@ -44,8 +44,8 @@ class Services:
                             },
                             1: {
                                 "url": "nfs://192.168.100.131/Primary",
-                                "name": "Primary KVM",
-                                "hypervisor": 'KVM',
+                                "name": "Primary XenServer",
+                                "hypervisor": 'XenServer',
                             },
                             2: {
                                 "url": "nfs://192.168.100.131/Primary",
@@ -87,16 +87,16 @@ class TestPrimaryStorageServices(cloudstackTestCase):
 
     @unittest.skip("skipped - will not be adding storage in our environments")
     def test_01_primary_storage(self):
-        """Test primary storage pools - XEN, KVM, VMWare
+        """Test primary storage pools - XEN, XenServer, VMWare
         """
 
         # Validate the following:
-        # 1. verify hypervisortype returned by api is Xen/KVM/VMWare
+        # 1. verify hypervisortype returned by api is Xen/XenServer/VMWare
         # 2. verify that the cluster is in 'Enabled' allocation state
         # 3. verify that the host is added successfully and
         #    in Up state with listHosts api response
 
-        #Create NFS storage pools with on XEN/KVM/VMWare clusters
+        #Create NFS storage pools with on XEN/XenServer/VMWare clusters
         for k, v in self.services["nfs"].items():
 
             clusters = list_clusters(
@@ -180,7 +180,7 @@ class TestPrimaryStorageServices(cloudstackTestCase):
             cleanup_resources(self.apiclient, self.cleanup)
             self.cleanup = []
 
-        # Create iSCSI storage pools with on XEN/KVM clusters
+        # Create iSCSI storage pools with on XEN/XenServer clusters
         for k, v in self.services["iscsi"].items():
             clusters = list_clusters(
                                      self.apiclient,

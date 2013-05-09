@@ -69,7 +69,7 @@ class Services:
                                     "publicport": 22,
                                     "protocol": 'TCP',
                                 },
-                         "ostype": 'CentOS 5.5 (64-bit)',
+                         "ostype": 'CentOS 5.3 (64-bit)',
                          "timeout": 100,
                     }
 
