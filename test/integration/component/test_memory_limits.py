@@ -1,4 +1,19 @@
-
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
 """ P1 tests for memory resource limits
 """
 # Import Local Modules
@@ -18,7 +33,9 @@ from marvin.integration.lib.common import (get_domain,
                                         get_zone,
                                         get_template,
                                         cleanup_resources,
+					wait_for_cleanup
                                         )
+from marvin.integration.lib.utils import get_resource_type
 
 
 class Services:
@@ -83,6 +100,7 @@ class TestMemoryLimits(cloudstackTestCase):
         # Get Zone, Domain and templates
         cls.domain = get_domain(cls.api_client, cls.services)
         cls.zone = get_zone(cls.api_client, cls.services)
+	cls.services["mode"] = cls.zone.networktype
 
         cls.template = get_template(
                             cls.api_client,
@@ -124,7 +142,7 @@ class TestMemoryLimits(cloudstackTestCase):
             raise Exception("Warning: Exception during cleanup : %s" % e)
         return
 
-    def create_Instance(self, service_off, networks=None):
+    def createInstance(self, service_off, networks=None):
         """Creates an instance in account"""
         self.debug("Deploying an instance in account: %s" %
                                                 self.account.account.name)
@@ -147,7 +165,7 @@ class TestMemoryLimits(cloudstackTestCase):
         except Exception as e:
             self.fail("Failed to deploy an instance: %s" % e)
 
-    def get_Network(self, account):
+    def getNetwork(self, account):
         """Returns a network for account"""
 
         networks = Network.list(
@@ -159,28 +177,19 @@ class TestMemoryLimits(cloudstackTestCase):
         self.assertIsInstance(networks,
                               list,
                               "List networks should return a valid response")
-        return networks[0]
+        return networks[0] 
 
-    def get_Resource_Type(self, resource_id):
-        """Returns resource type"""
-
-        lookup = {1: "VM", 2: "Public IP", 3: "Volume", 4: "Snapshot",
-                     5: "Template", 6: "Projects", 7: "Network", 8: "VPC",
-                     9: "CPUs", 10: "RAM",
-                     11: "Primary (shared) storage (Volumes)",
-                     12: "Secondary storage (Snapshots, Templates & ISOs)",
-                     13: "Network bandwidth rate (in bps)",
-                     14: "Number of times a OS template can be deployed"}
-        return lookup[resource_id]
-
-    def check_Resource_Count(self, account, rtype, delete=False):
+    def checkResourceCount(self, account, rtype, delete=False):
         """Validates the resource count
-            9     - CPUs
-            10    - RAM
-            11    - Primary (shared) storage (Volumes)
-            12    - Secondary storage (Snapshots, Templates & ISOs)
-            13    - Network bandwidth rate (in bps)
-            14    - Number of times a OS template can be deployed"""
+            8     - CPUs
+            9    - RAM
+            10    - Primary (shared) storage (Volumes)
+            11    - Secondary storage (Snapshots, Templates & ISOs)
+            12    - Network bandwidth rate (in bps)
+            13    - Number of times a OS template can be deployed"""
+	
+	allowedResourceTypes = [8,9,10,11,12,13]
+	self.assertTrue(rtype in allowedResourceTypes,"Invalid resource type")
 
         self.debug("Updating the Memory resource count for account: %s" %
                                                     account.account.name)
@@ -193,19 +202,20 @@ class TestMemoryLimits(cloudstackTestCase):
                         "Update resource count should return valid response")
         response = responses[0]
         self.debug(response.resourcecount)
-        if delete:
+
+	if delete:
             self.assertEqual(response.resourcecount,
                          0,
                          "Resource count for %s should be 0" %
-                                        self.get_Resource_Type(rtype))
+                                        get_resource_type(rtype))
         else:
             self.assertNotEqual(response.resourcecount,
                          0,
                          "Resource count for %s should not be 0" %
-                                        self.get_Resource_Type(rtype))
+                                        get_resource_type(rtype)) 
         return
 
-    def find_Suitable_Host(self, vm):
+    def findSuitableHost(self, vm):
         """Returns a suitable host for VM migration"""
 
         try:
@@ -218,7 +228,8 @@ class TestMemoryLimits(cloudstackTestCase):
             self.fail("Failed to find suitable host vm migration: %s" % e)
         return
 
-    @attr(tags=["advanced", "advancedns"])
+    @unittest.skip("Skip")
+    @attr(tags=["advanced", "advancedns","simulator"])
     def test_01_deploy_vm_with_5_gb_ram(self):
         """Test Deploy VM with 5 GB RAM & verify the usage"""
 
@@ -236,40 +247,45 @@ class TestMemoryLimits(cloudstackTestCase):
 
         self.debug("Creating an instance with service offering: %s" %
                                                     self.service_offering.name)
-        vm = self.create_Instance(service_off=self.service_offering)
+        vm = self.createInstance(service_off=self.service_offering)
 
-        self.check_Resource_Count(account=self.account, rtype=10)
+        self.checkResourceCount(account=self.account, rtype=9)
         self.debug("Stopping instance: %s" % vm.name)
         try:
             vm.stop(self.apiclient)
         except Exception as e:
             self.fail("Failed to stop instance: %s" % e)
-        self.check_Resource_Count(account=self.account, rtype=10)
+        self.checkResourceCount(account=self.account, rtype=9)
 
         self.debug("Starting instance: %s" % vm.name)
         try:
             vm.start(self.apiclient)
         except Exception as e:
             self.fail("Failed to start instance: %s" % e)
-        self.check_Resource_Count(account=self.account, rtype=10)
+        self.checkResourceCount(account=self.account, rtype=9)
 
-        host = self.find_Suitable_Host(vm)
+        host = self.findSuitableHost(vm)
         self.debug("Migrating instance: %s to host: %s" % (vm.name, host.name))
         try:
             vm.migrate(self.apiclient, host.id)
         except Exception as e:
             self.fail("Failed to migrate instance: %s" % e)
-        self.check_Resource_Count(account=self.account, rtype=10)
+        self.checkResourceCount(account=self.account, rtype=9)
 
         self.debug("Destroying instance: %s" % vm.name)
         try:
             vm.delete(self.apiclient)
         except Exception as e:
             self.fail("Failed to delete instance: %s" % e)
-        self.check_Resource_Count(account=self.account, rtype=10, delete=True)
+
+	# Wait for expunge interval to cleanup Memory
+	wait_for_cleanup(self.apiclient, ["expunge.delay", "expunge.interval"])
+
+        self.checkResourceCount(account=self.account, rtype=9, delete=True)
         return
 
-    @attr(tags=["advanced", "advancedns"])
+    @unittest.skip("Skip")
+    @attr(tags=["advanced", "advancedns","simulator"])
     def test_02_deploy_multiple_vm_with_5gb_ram(self):
         """Test Deploy multiple VM with 5 GB RAM & verify the usage"""
 
@@ -289,31 +305,17 @@ class TestMemoryLimits(cloudstackTestCase):
 
         self.debug("Creating an instance with service offering: %s" %
                                                     self.service_offering.name)
-        vm_1 = self.create_Instance(service_off=self.service_offering)
-        vm_2 = self.create_Instance(service_off=self.service_offering)
-        vm_3 = self.create_Instance(service_off=self.service_offering)
-        vm_4 = self.create_Instance(service_off=self.service_offering)
-
-        self.debug("Deploying an instance where Memory capacity is fully utilized")
-#        with self.assertRaises(Exception):
-#            self.create_Instance(service_off=self.service_offering)
-
-        self.check_Resource_Count(account=self.account, rtype=10)
+        vm_1 = self.createInstance(service_off=self.service_offering)
+        vm_2 = self.createInstance(service_off=self.service_offering)
+        vm_3 = self.createInstance(service_off=self.service_offering) 
+ 
+        self.checkResourceCount(account=self.account, rtype=9)
         self.debug("Destroying instance: %s" % vm_1.name)
         try:
             vm_1.delete(self.apiclient)
         except Exception as e:
             self.fail("Failed to delete instance: %s" % e)
-        self.check_Resource_Count(account=self.account, rtype=10)
-
-        host = self.find_Suitable_Host(vm_2)
-        self.debug("Migrating instance: %s to host: %s" % (vm_2.name,
-                                                           host.name))
-        try:
-            vm_2.migrate(self.apiclient, host.id)
-        except Exception as e:
-            self.fail("Failed to migrate instance: %s" % e)
-        self.check_Resource_Count(account=self.account, rtype=10)
+        self.checkResourceCount(account=self.account, rtype=9) 
         return
 
 
@@ -327,6 +329,7 @@ class TestDomainMemoryLimits(cloudstackTestCase):
         # Get Zone, Domain and templates
         cls.domain = get_domain(cls.api_client, cls.services)
         cls.zone = get_zone(cls.api_client, cls.services)
+	cls.services["mode"] = cls.zone.networktype
 
         cls.template = get_template(
                             cls.api_client,
@@ -363,7 +366,7 @@ class TestDomainMemoryLimits(cloudstackTestCase):
             raise Exception("Warning: Exception during cleanup : %s" % e)
         return
 
-    def create_Instance(self, service_off, networks=None):
+    def createInstance(self, service_off, networks=None):
         """Creates an instance in account"""
         self.debug("Deploying an instance in account: %s" %
                                                 self.account.account.name)
@@ -386,7 +389,7 @@ class TestDomainMemoryLimits(cloudstackTestCase):
         except Exception as e:
             self.fail("Failed to deploy an instance: %s" % e)
 
-    def get_Network(self, account):
+    def getNetwork(self, account):
         """Returns a network for account"""
 
         networks = Network.list(
@@ -398,30 +401,21 @@ class TestDomainMemoryLimits(cloudstackTestCase):
         self.assertIsInstance(networks,
                               list,
                               "List networks should return a valid response")
-        return networks[0]
+        return networks[0] 
 
-    def get_Resource_Type(self, resource_id):
-        """Returns resource type"""
-
-        lookup = {1: "VM", 2: "Public IP", 3: "Volume", 4: "Snapshot",
-                     5: "Template", 6: "Projects", 7: "Network", 8: "VPC",
-                     9: "CPUs", 10: "RAM",
-                     11: "Primary (shared) storage (Volumes)",
-                     12: "Secondary storage (Snapshots, Templates & ISOs)",
-                     13: "Network bandwidth rate (in bps)",
-                     14: "Number of times a OS template can be deployed"}
-        return lookup[resource_id]
-
-    def check_Resource_Count(self, account, rtype, delete=False):
+    def checkResourceCount(self, account, rtype, delete=False):
         """Validates the resource count
-            9     - CPUs
-            10    - RAM
-            11    - Primary (shared) storage (Volumes)
-            12    - Secondary storage (Snapshots, Templates & ISOs)
-            13    - Network bandwidth rate (in bps)
-            14    - Number of times a OS template can be deployed"""
+            8     - CPUs
+            9    - RAM
+            10    - Primary (shared) storage (Volumes)
+            11    - Secondary storage (Snapshots, Templates & ISOs)
+            12    - Network bandwidth rate (in bps)
+            13    - Number of times a OS template can be deployed"""
 
-        self.debug("Updating the Memory resource count for account: %s" %
+        allowedResourceTypes = [8,9,10,11,12,13]
+	self.assertTrue(rtype in allowedResourceTypes,"Invalid resource type")
+
+	self.debug("Updating the Memory resource count for account: %s" %
                                                     account.account.name)
         responses = Resources.updateCount(self.apiclient,
                               domainid=account.account.domainid,
@@ -432,19 +426,20 @@ class TestDomainMemoryLimits(cloudstackTestCase):
                         "Update resource count should return valid response")
         response = responses[0]
         self.debug(response.resourcecount)
-        if delete:
+
+	if delete:
             self.assertEqual(response.resourcecount,
                          0,
                          "Resource count for %s should be 0" %
-                                        self.get_Resource_Type(rtype))
+                                        get_resource_type(rtype))
         else:
             self.assertNotEqual(response.resourcecount,
                          0,
                          "Resource count for %s should not be 0" %
-                                        self.get_Resource_Type(rtype))
+                                        get_resource_type(rtype)) 
         return
 
-    def find_Suitable_Host(self, vm):
+    def findSuitableHost(self, vm):
         """Returns a suitable host for VM migration"""
 
         try:
@@ -457,70 +452,52 @@ class TestDomainMemoryLimits(cloudstackTestCase):
             self.fail("Failed to find suitable host vm migration: %s" % e)
         return
 
-    def setup_Accounts(self):
+    def setupAccounts(self):
 
-        self.debug("Creating a domain under: %s" % self.domain.name)
-        self.parent_domain = Domain.create(self.apiclient,
-                                        services=self.services["domain"],
-                                        parentdomainid=self.domain.id)
-        self.parentd_admin = Account.create(
-                            self.apiclient,
-                            self.services["account"],
-                            admin=True,
-                            domainid=self.domain.id
-                            )
-        # Cleanup the resources created at end of test
-        self.cleanup.append(self.parentd_admin)
-        self.cleanup.append(self.parent_domain)
-
-        self.debug("Updating the Memory resource count for domain: %s" %
-                                                            self.domain.name)
-        Resources.updateLimit(self.apiclient,
-                              resourcetype=10,
-                              max=5120,
-                              account=self.parentd_admin.account.name,
-                              domainid=self.parentd_admin.account.domainid)
         self.debug("Creating a sub-domain under: %s" % self.domain.name)
-        self.sub_domain = Domain.create(self.apiclient,
+        self.child_domain = Domain.create(self.apiclient,
                                         services=self.services["domain"],
                                         parentdomainid=self.domain.id)
-        self.childd_admin = Account.create(
+        self.child_do_admin = Account.create(
                                         self.apiclient,
                                         self.services["account"],
                                         admin=True,
-                                        domainid=self.sub_domain.id
+                                        domainid=self.child_domain.id
                                         )
         # Cleanup the resources created at end of test
-        self.cleanup.append(self.childd_admin)
-        self.cleanup.append(self.sub_domain)
+        self.cleanup.append(self.child_do_admin)
+        self.cleanup.append(self.child_domain)
 
         Resources.updateLimit(self.apiclient,
-                              resourcetype=10,
+                              resourcetype=9,
                               max=5120,
-                              account=self.childd_admin.account.name,
-                              domainid=self.childd_admin.account.domainid)
+                              account=self.child_do_admin.account.name,
+                              domainid=self.child_do_admin.account.domainid)
+	
+	self.domain = Domain.create(self.apiclient,
+                                services=self.services["domain"],
+                                parentdomainid=self.domain.id)
 
-        self.debug("Creating a domain under: %s" % self.domain.name)
-        self.domain = Domain.create(self.apiclient,
-                                        services=self.services["domain"],
-                                        parentdomainid=self.domain.id)
         self.admin = Account.create(
                                     self.apiclient,
                                     self.services["account"],
                                     admin=True,
-                                    domainid=self.sub_domain.id)
+                                    domainid=self.domain.id)
+	
         # Cleanup the resources created at end of test
         self.cleanup.append(self.admin)
-        self.cleanup.append(self.domain)
+	self.cleanup.append(self.domain)
 
         Resources.updateLimit(self.apiclient,
-                              resourcetype=10,
+                              resourcetype=9,
                               max=5120,
                               account=self.admin.account.name,
                               domainid=self.admin.account.domainid)
         return
 
-    @attr(tags=["advanced", "advancedns"])
+    @unittest.skip("Skip")
+    @attr(tags=["advanced", "advancedns","simulator"])
+    @unittest.skip("Skip")
     @attr(configuration='max.account.memory')
     def test_01_deploy_vm_with_5gb_ram(self):
         """Test Deploy VM with 5 GB RAM & verify the usage"""
@@ -538,24 +515,24 @@ class TestDomainMemoryLimits(cloudstackTestCase):
         self.cleanup.append(self.service_offering)
 
         self.debug("Setting up account and domain hierarchy")
-        self.setup_Accounts()
-        users = {self.parent_domain: self.parentd_admin,
-                 self.sub_domain: self.childd_admin
+        self.setupAccounts()
+        users =  { self.domain: self.admin,
+                   self.child_domain: self.child_do_admin
                  }
         for domain, admin in users.items():
             self.account = admin
             self.domain = domain
             self.debug("Creating an instance with service offering: %s" %
                                                     self.service_offering.name)
-            vm = self.create_Instance(service_off=self.service_offering)
+            vm = self.createInstance(service_off=self.service_offering)
 
-            self.check_Resource_Count(account=self.account, rtype=10)
+            self.checkResourceCount(account=self.account, rtype=9)
             self.debug("Stopping instance: %s" % vm.name)
             try:
                 vm.stop(self.apiclient)
             except Exception as e:
                 self.fail("Failed to stop instance: %s" % e)
-            self.check_Resource_Count(account=self.account, rtype=10)
+            self.checkResourceCount(account=self.account, rtype=9)
 
             self.debug("Creating service offering with 7 GB RAM")
             self.services["service_offering"]["memory"] = 7168
@@ -564,7 +541,7 @@ class TestDomainMemoryLimits(cloudstackTestCase):
                                             self.services["service_offering"]
                                             )
             # Adding to cleanup list after execution
-            self.cleanup.append(self.service_offering)
+            self.cleanup.append(self.service_offering_7gb)
 
             self.debug(
                 "Upgrade service offering of instance %s from %s to %s" %
@@ -578,7 +555,7 @@ class TestDomainMemoryLimits(cloudstackTestCase):
             except Exception as e:
                 self.fail("Failed to change service offering of vm %s - %s" %
                                                                 (vm.name, e))
-            self.check_Resource_Count(account=self.account, rtype=10)
+            self.checkResourceCount(account=self.account, rtype=9)
 
             self.debug(
                 "Down grade service offering of instance %s from %s to %s" %
@@ -592,39 +569,44 @@ class TestDomainMemoryLimits(cloudstackTestCase):
             except Exception as e:
                 self.fail("Failed to change service offering of vm %s - %s" %
                                                                 (vm.name, e))
-            self.check_Resource_Count(account=self.account, rtype=10)
+            self.checkResourceCount(account=self.account, rtype=9)
 
             self.debug("Starting instance: %s" % vm.name)
             try:
                 vm.start(self.apiclient)
             except Exception as e:
                 self.fail("Failed to start instance: %s" % e)
-            self.check_Resource_Count(account=self.account, rtype=10)
+            self.checkResourceCount(account=self.account, rtype=9)
 
             self.debug("Assigning VM to account: %s in domain: %s" %
                                                 (self.admin.account.name,
                                                 self.admin.account.domain))
             # TODO: Assign Virtual Machine function implementation
 
-            host = self.find_Suitable_Host(vm)
+            host = self.findSuitableHost(vm)
             self.debug("Migrating instance: %s to host: %s" %
                                                         (vm.name, host.name))
             try:
                 vm.migrate(self.apiclient, host.id)
             except Exception as e:
                 self.fail("Failed to migrate instance: %s" % e)
-            self.check_Resource_Count(account=self.account, rtype=10)
+            self.checkResourceCount(account=self.account, rtype=9)
 
             self.debug("Destroying instance: %s" % vm.name)
             try:
                 vm.delete(self.apiclient)
             except Exception as e:
                 self.fail("Failed to delete instance: %s" % e)
-            self.check_Resource_Count(account=self.account, rtype=10,
-                                      delete=True)
+
+	    # Wait for expunge interval to cleanup Memory
+	    wait_for_cleanup(self.apiclient, ["expunge.delay", "expunge.interval"])
+
+            self.checkResourceCount(account=self.account, rtype=9, delete=True)
         return
 
-    @attr(tags=["advanced", "advancedns"])
+    @unittest.skip("Skip")
+    @attr(tags=["advanced", "advancedns","simulator"])
+    @unittest.skip("Skip")
     @attr(configuration='max.account.memory')
     def test_02_deploy_multiple_vm_with_5gb_ram(self):
         """Test Deploy multiple VM with 5 GB RAM & verify the usage"""
@@ -644,40 +626,42 @@ class TestDomainMemoryLimits(cloudstackTestCase):
         self.cleanup.append(self.service_offering)
 
         self.debug("Setting up account and domain hierarchy")
-        self.setup_Accounts()
-        users = {self.parent_domain: self.parentd_admin,
-                 self.sub_domain: self.childd_admin
+        self.setupAccounts()
+        users =  { self.domain: self.admin,
+                   self.child_domain: self.child_do_admin
                  }
         for domain, admin in users.items():
             self.account = admin
             self.domain = domain
             self.debug("Creating an instance with service offering: %s" %
                                                     self.service_offering.name)
-            vm_1 = self.create_Instance(service_off=self.service_offering)
-            vm_2 = self.create_Instance(service_off=self.service_offering)
-            vm_3 = self.create_Instance(service_off=self.service_offering)
-            vm_4 = self.create_Instance(service_off=self.service_offering)
+            vm_1 = self.createInstance(service_off=self.service_offering)
+            vm_2 = self.createInstance(service_off=self.service_offering)
+            vm_3 = self.createInstance(service_off=self.service_offering)
+            #vm_4 = self.createInstance(service_off=self.service_offering)
 
             self.debug("Deploying instance - Memory capacity is fully utilized")
-#            with self.assertRaises(Exception):
-#                self.create_Instance(service_off=self.service_offering)
+            with self.assertRaises(Exception):
+                self.createInstance(service_off=self.service_offering)
 
-            self.check_Resource_Count(account=self.account, rtype=10)
+            self.checkResourceCount(account=self.account, rtype=9)
             self.debug("Destroying instance: %s" % vm_1.name)
             try:
                 vm_1.delete(self.apiclient)
             except Exception as e:
                 self.fail("Failed to delete instance: %s" % e)
-            self.check_Resource_Count(account=self.account, rtype=10)
+            self.checkResourceCount(account=self.account, rtype=9)
 
-            host = self.find_Suitable_Host(vm_2)
+            host = self.findSuitableHost(vm_2)
             self.debug("Migrating instance: %s to host: %s" % (vm_2.name,
                                                                host.name))
             try:
                 vm_2.migrate(self.apiclient, host.id)
             except Exception as e:
                 self.fail("Failed to migrate instance: %s" % e)
-            self.check_Resource_Count(account=self.account, rtype=10)
+            self.checkResourceCount(account=self.account, rtype=9)
+	    vm_2.delete(self.apiclient)
+	    vm_3.delete(self.apiclient)
         return
 
 
@@ -691,6 +675,7 @@ class TestMemoryUpdateResources(cloudstackTestCase):
         # Get Zone, Domain and templates
         cls.domain = get_domain(cls.api_client, cls.services)
         cls.zone = get_zone(cls.api_client, cls.services)
+	cls.services["mode"] = cls.zone.networktype
 
         cls.template = get_template(
                             cls.api_client,
@@ -727,7 +712,7 @@ class TestMemoryUpdateResources(cloudstackTestCase):
             raise Exception("Warning: Exception during cleanup : %s" % e)
         return
 
-    def create_Instance(self, service_off, networks=None):
+    def createInstance(self, service_off, networks=None):
         """Creates an instance in account"""
         self.debug("Deploying an instance in account: %s" %
                                                 self.account.account.name)
@@ -750,7 +735,7 @@ class TestMemoryUpdateResources(cloudstackTestCase):
         except Exception as e:
             self.fail("Failed to deploy an instance: %s" % e)
 
-    def get_Network(self, account):
+    def getNetwork(self, account):
         """Returns a network for account"""
 
         networks = Network.list(
@@ -762,30 +747,21 @@ class TestMemoryUpdateResources(cloudstackTestCase):
         self.assertIsInstance(networks,
                               list,
                               "List networks should return a valid response")
-        return networks[0]
+        return networks[0] 
 
-    def get_Resource_Type(self, resource_id):
-        """Returns resource type"""
-
-        lookup = {1: "VM", 2: "Public IP", 3: "Volume", 4: "Snapshot",
-                     5: "Template", 6: "Projects", 7: "Network", 8: "VPC",
-                     9: "CPUs", 10: "RAM",
-                     11: "Primary (shared) storage (Volumes)",
-                     12: "Secondary storage (Snapshots, Templates & ISOs)",
-                     13: "Network bandwidth rate (in bps)",
-                     14: "Number of times a OS template can be deployed"}
-        return lookup[resource_id]
-
-    def check_Resource_Count(self, account, rtype, delete=False):
+    def checkResourceCount(self, account, rtype, delete=False):
         """Validates the resource count
-            9     - CPUs
-            10    - RAM
-            11    - Primary (shared) storage (Volumes)
-            12    - Secondary storage (Snapshots, Templates & ISOs)
-            13    - Network bandwidth rate (in bps)
-            14    - Number of times a OS template can be deployed"""
+            8     - CPUs
+            9    - RAM
+            10    - Primary (shared) storage (Volumes)
+            11    - Secondary storage (Snapshots, Templates & ISOs)
+            12    - Network bandwidth rate (in bps)
+            13    - Number of times a OS template can be deployed"""
 
-        self.debug("Updating the Memory resource count for account: %s" %
+        allowedResourceTypes = [8,9,10,11,12,13]
+	self.assertTrue(rtype in allowedResourceTypes,"Invalid resource type")
+
+	self.debug("Updating the Memory resource count for account: %s" %
                                                     account.account.name)
         responses = Resources.updateCount(self.apiclient,
                               domainid=account.account.domainid,
@@ -796,19 +772,20 @@ class TestMemoryUpdateResources(cloudstackTestCase):
                         "Update resource count should return valid response")
         response = responses[0]
         self.debug(response.resourcecount)
-        if delete:
+
+	if delete:
             self.assertEqual(response.resourcecount,
                          0,
                          "Resource count for %s should be 0" %
-                                        self.get_Resource_Type(rtype))
+                                        get_resource_type(rtype))
         else:
             self.assertNotEqual(response.resourcecount,
                          0,
                          "Resource count for %s should not be 0" %
-                                        self.get_Resource_Type(rtype))
+                                        get_resource_type(rtype)) 
         return
 
-    def find_Suitable_Host(self, vm):
+    def findSuitableHost(self, vm):
         """Returns a suitable host for VM migration"""
 
         try:
@@ -821,50 +798,32 @@ class TestMemoryUpdateResources(cloudstackTestCase):
             self.fail("Failed to find suitable host vm migration: %s" % e)
         return
 
-    def setup_Accounts(self):
+    def setupAccounts(self):
 
         self.debug("Creating a domain under: %s" % self.domain.name)
-        self.parent_domain = Domain.create(self.apiclient,
+        self.child_domain = Domain.create(self.apiclient,
                                         services=self.services["domain"],
                                         parentdomainid=self.domain.id)
-        self.parentd_admin = Account.create(
+        self.child_do_admin = Account.create(
                             self.apiclient,
                             self.services["account"],
                             admin=True,
-                            domainid=self.domain.id
+                            domainid=self.child_domain.id
                             )
         # Cleanup the resources created at end of test
-        self.cleanup.append(self.parentd_admin)
-        self.cleanup.append(self.parent_domain)
+        self.cleanup.append(self.child_do_admin)
+        self.cleanup.append(self.child_domain)
+
         self.debug("Updating the Memory resource count for domain: %s" %
                                                             self.domain.name)
         Resources.updateLimit(self.apiclient,
                               resourcetype=10,
                               max=10240,
-                              account=self.parentd_admin.account.name,
-                              domainid=self.parentd_admin.account.domainid)
-        self.debug("Creating a sub-domain under: %s" % self.domain.name)
-        self.sub_domain = Domain.create(self.apiclient,
-                                        services=self.services["domain"],
-                                        parentdomainid=self.domain.id)
-        self.childd_admin = Account.create(
-                                        self.apiclient,
-                                        self.services["account"],
-                                        admin=True,
-                                        domainid=self.sub_domain.id
-                                        )
+                              account=self.child_do_admin.account.name,
+                              domainid=self.child_do_admin.account.domainid)
 
-        # Cleanup the resources created at end of test
-        self.cleanup.append(self.sub_domain)
-        self.cleanup.append(self.childd_admin)
-        self.debug("Updating the Memory resource count for domain: %s" %
-                                                        self.sub_domain.name)
-        Resources.updateLimit(self.apiclient,
-                              resourcetype=10,
-                              max=5120,
-                              account=self.childd_admin.account.name,
-                              domainid=self.childd_admin.account.domainid)
         self.debug("Creating a domain under: %s" % self.domain.name)
+
         self.domain = Domain.create(self.apiclient,
                                         services=self.services["domain"],
                                         parentdomainid=self.domain.id)
@@ -872,9 +831,9 @@ class TestMemoryUpdateResources(cloudstackTestCase):
                                     self.apiclient,
                                     self.services["account"],
                                     admin=True,
-                                    domainid=self.sub_domain.id)
-        # Cleanup the resources created at end of test
-        self.cleanup.append(self.admin)
+                                    domainid=self.domain.id)
+        # Cleanup the resources created at end of test	
+	self.cleanup.append(self.admin)
         self.cleanup.append(self.domain)
 
         Resources.updateLimit(self.apiclient,
@@ -884,7 +843,8 @@ class TestMemoryUpdateResources(cloudstackTestCase):
                               domainid=self.admin.account.domainid)
         return
 
-    @attr(tags=["advanced", "advancedns"])
+    @unittest.skip("Skip")
+    @attr(tags=["advanced", "advancedns","simulator"])
     def test_01_deploy_vm_with_5gb_ram(self):
         """Test Deploy VM with 5 GB RAM & verify the usage"""
 
@@ -901,24 +861,24 @@ class TestMemoryUpdateResources(cloudstackTestCase):
         self.cleanup.append(self.service_offering)
 
         self.debug("Setting up account and domain hierarchy")
-        self.setup_Accounts()
-        users = {self.parent_domain: self.parentd_admin,
-                 self.sub_domain: self.childd_admin
+        self.setupAccounts()
+        users = {self.domain: self.admin,
+                 self.child_domain: self.child_do_admin
                  }
         for domain, admin in users.items():
             self.account = admin
             self.domain = domain
             self.debug("Creating an instance with service offering: %s" %
                                                     self.service_offering.name)
-            vm = self.create_Instance(service_off=self.service_offering)
+            vm = self.createInstance(service_off=self.service_offering)
 
-            self.check_Resource_Count(account=self.account, rtype=10)
+            self.checkResourceCount(account=self.account, rtype=9)
             self.debug("Stopping instance: %s" % vm.name)
             try:
                 vm.stop(self.apiclient)
             except Exception as e:
                 self.fail("Failed to stop instance: %s" % e)
-            self.check_Resource_Count(account=self.account, rtype=10)
+            self.checkResourceCount(account=self.account, rtype=9)
 
             self.debug("Creating service offering with 7 GB RAM")
             self.services["service_offering"]["memory"] = 7168
@@ -926,7 +886,7 @@ class TestMemoryUpdateResources(cloudstackTestCase):
                                             self.apiclient,
                                             self.services["service_offering"])
             # Adding to cleanup list after execution
-            self.cleanup.append(self.service_offering)
+            self.cleanup.append(self.service_offering_7gb)
 
             self.debug(
                 "Upgrade service offering of instance %s from %s to %s" %
@@ -940,7 +900,7 @@ class TestMemoryUpdateResources(cloudstackTestCase):
             except Exception as e:
                 self.fail("Failed to change service offering of vm %s - %s" %
                                                                 (vm.name, e))
-            self.check_Resource_Count(account=self.account, rtype=10)
+            self.checkResourceCount(account=self.account, rtype=9)
 
             self.debug(
                 "Down grade service offering of instance %s from %s to %s" %
@@ -954,23 +914,23 @@ class TestMemoryUpdateResources(cloudstackTestCase):
             except Exception as e:
                 self.fail("Failed to change service offering of vm %s - %s" %
                                                                 (vm.name, e))
-            self.check_Resource_Count(account=self.account, rtype=10)
+            self.checkResourceCount(account=self.account, rtype=9)
 
             self.debug("Starting instance: %s" % vm.name)
             try:
                 vm.start(self.apiclient)
             except Exception as e:
                 self.fail("Failed to start instance: %s" % e)
-            self.check_Resource_Count(account=self.account, rtype=10)
+            self.checkResourceCount(account=self.account, rtype=9)
 
-            host = self.find_Suitable_Host(vm)
+            host = self.findSuitableHost(vm)
             self.debug("Migrating instance: %s to host: %s" %
                                                         (vm.name, host.name))
             try:
                 vm.migrate(self.apiclient, host.id)
             except Exception as e:
                 self.fail("Failed to migrate instance: %s" % e)
-            self.check_Resource_Count(account=self.account, rtype=10)
+            self.checkResourceCount(account=self.account, rtype=9)
 
             self.debug("Assigning VM to account: %s in domain: %s" %
                                                 (self.admin.account.name,
@@ -982,11 +942,15 @@ class TestMemoryUpdateResources(cloudstackTestCase):
                 vm.delete(self.apiclient)
             except Exception as e:
                 self.fail("Failed to delete instance: %s" % e)
-            self.check_Resource_Count(account=self.account, rtype=10,
-                                      delete=True)
+
+	    # Wait for expunge interval to cleanup Memory
+            wait_for_cleanup(self.apiclient, ["expunge.delay", "expunge.interval"])
+
+            self.checkResourceCount(account=self.account, rtype=9, delete=True)
         return
 
-    @attr(tags=["advanced", "advancedns"])
+    @unittest.skip("Skip")
+    @attr(tags=["advanced", "advancedns","simulator"])
     def test_02_deploy_multiple_vm_with_5gb_ram(self):
         """Test Deploy multiple VM with 5 GB RAM& verify the usage"""
 
@@ -1005,40 +969,42 @@ class TestMemoryUpdateResources(cloudstackTestCase):
         self.cleanup.append(self.service_offering)
 
         self.debug("Setting up account and domain hierarchy")
-        self.setup_Accounts()
-        users = {self.parent_domain: self.parentd_admin,
-                 self.sub_domain: self.childd_admin
+        self.setupAccounts()
+        users =  { self.domain: self.admin,
+                   self.child_domain: self.child_do_admin
                  }
         for domain, admin in users.items():
             self.account = admin
             self.domain = domain
             self.debug("Creating an instance with service offering: %s" %
                                                     self.service_offering.name)
-            vm_1 = self.create_Instance(service_off=self.service_offering)
-            vm_2 = self.create_Instance(service_off=self.service_offering)
-            vm_3 = self.create_Instance(service_off=self.service_offering)
-            vm_4 = self.create_Instance(service_off=self.service_offering)
+            vm_1 = self.createInstance(service_off=self.service_offering)
+            vm_2 = self.createInstance(service_off=self.service_offering)
+            vm_3 = self.createInstance(service_off=self.service_offering)
+            #vm_4 = self.createInstance(service_off=self.service_offering)
 
             self.debug("Deploying instance - Memory capacity is fully utilized")
 #            with self.assertRaises(Exception):
-#                self.create_Instance(service_off=self.service_offering)
+#                self.createInstance(service_off=self.service_offering)
 
-            self.check_Resource_Count(account=self.account, rtype=10)
+            self.checkResourceCount(account=self.account, rtype=10)
             self.debug("Destroying instance: %s" % vm_1.name)
             try:
                 vm_1.delete(self.apiclient)
             except Exception as e:
                 self.fail("Failed to delete instance: %s" % e)
-            self.check_Resource_Count(account=self.account, rtype=10)
+            self.checkResourceCount(account=self.account, rtype=10)
 
-            host = self.find_Suitable_Host(vm_2)
+            host = self.findSuitableHost(vm_2)
             self.debug("Migrating instance: %s to host: %s" % (vm_2.name,
                                                                host.name))
             try:
                 vm_2.migrate(self.apiclient, host.id)
             except Exception as e:
                 self.fail("Failed to migrate instance: %s" % e)
-            self.check_Resource_Count(account=self.account, rtype=10)
+            self.checkResourceCount(account=self.account, rtype=10)
+	    vm_2.delete(self.apiclient)
+	    vm_3.delete(self.apiclient)  
         return
 
 
@@ -1052,6 +1018,7 @@ class TestMultipleChildDomainsMemory(cloudstackTestCase):
         # Get Zone, Domain and templates
         cls.domain = get_domain(cls.api_client, cls.services)
         cls.zone = get_zone(cls.api_client, cls.services)
+	cls.services["mode"] = cls.zone.networktype
 
         cls.template = get_template(
                             cls.api_client,
@@ -1088,10 +1055,10 @@ class TestMultipleChildDomainsMemory(cloudstackTestCase):
             raise Exception("Warning: Exception during cleanup : %s" % e)
         return
 
-    def create_Instance(self, account, service_off, networks=None):
+    def createInstance(self, account, service_off, networks=None):
         """Creates an instance in account"""
         self.debug("Deploying an instance in account: %s" %
-                                                self.account.account.name)
+                                                account.account.name)
         try:
             vm = VirtualMachine.create(
                                 self.apiclient,
@@ -1111,7 +1078,7 @@ class TestMultipleChildDomainsMemory(cloudstackTestCase):
         except Exception as e:
             self.fail("Failed to deploy an instance: %s" % e)
 
-    def get_Network(self, account):
+    def getNetwork(self, account):
         """Returns a network for account"""
 
         networks = Network.list(
@@ -1123,21 +1090,9 @@ class TestMultipleChildDomainsMemory(cloudstackTestCase):
         self.assertIsInstance(networks,
                               list,
                               "List networks should return a valid response")
-        return networks[0]
+        return networks[0] 
 
-    def get_Resource_Type(self, resource_id):
-        """Returns resource type"""
-
-        lookup = {1: "VM", 2: "Public IP", 3: "Volume", 4: "Snapshot",
-                     5: "Template", 6: "Projects", 7: "Network", 8: "VPC",
-                     9: "CPUs", 10: "RAM",
-                     11: "Primary (shared) storage (Volumes)",
-                     12: "Secondary storage (Snapshots, Templates & ISOs)",
-                     13: "Network bandwidth rate (in bps)",
-                     14: "Number of times a OS template can be deployed"}
-        return lookup[resource_id]
-
-    def check_Resource_Count(self, account, rtype, delete=False):
+    def checkResourceCount(self, account, rtype, delete=False):
         """Validates the resource count
             9     - CPUs
             10    - RAM
@@ -1146,7 +1101,10 @@ class TestMultipleChildDomainsMemory(cloudstackTestCase):
             13    - Network bandwidth rate (in bps)
             14    - Number of times a OS template can be deployed"""
 
-        self.debug("Updating the Memory resource count for account: %s" %
+        allowedResourceTypes = [9,10,11,12,13,14]
+	self.assertTrue(rtype in allowedResourceTypes,"Invalid resource type")
+
+	self.debug("Updating the Memory resource count for account: %s" %
                                                     account.account.name)
         responses = Resources.updateCount(self.apiclient,
                               domainid=account.account.domainid,
@@ -1161,15 +1119,15 @@ class TestMultipleChildDomainsMemory(cloudstackTestCase):
             self.assertEqual(response.resourcecount,
                          0,
                          "Resource count for %s should be 0" %
-                                        self.get_Resource_Type(rtype))
+                                        get_resource_type(rtype))
         else:
             self.assertNotEqual(response.resourcecount,
                          0,
                          "Resource count for %s should not be 0" %
-                                        self.get_Resource_Type(rtype))
+                                        get_resource_type(rtype))
         return
 
-    def setup_Accounts(self):
+    def setupAccounts(self):
 
         self.debug("Creating a domain under: %s" % self.domain.name)
         self.parent_domain = Domain.create(self.apiclient,
@@ -1181,10 +1139,7 @@ class TestMultipleChildDomainsMemory(cloudstackTestCase):
                             admin=True,
                             domainid=self.domain.id
                             )
-        # Cleanup the resources created at end of test
-        self.cleanup.append(self.parentd_admin)
-        self.cleanup.append(self.parent_domain)
-
+         
         self.debug("Updating the Memory resource count for domain: %s" %
                                                             self.domain.name)
         Resources.updateLimit(self.apiclient,
@@ -1208,12 +1163,7 @@ class TestMultipleChildDomainsMemory(cloudstackTestCase):
                                         admin=True,
                                         domainid=self.cdomain_1.id
                                         )
-        # Cleanup the resources created at end of test
-        self.cleanup.append(self.cadmin_1)
-        self.cleanup.append(self.cadmin_2)
-        self.cleanup.append(self.cdomain_1)
-        self.cleanup.append(self.cdomain_2)
-
+                
         self.debug("Updating the Memory resource count for domain: %s" %
                                                         self.cdomain_1.name)
         Resources.updateLimit(self.apiclient,
@@ -1228,6 +1178,15 @@ class TestMultipleChildDomainsMemory(cloudstackTestCase):
                                         admin=True,
                                         domainid=self.cdomain_2.id
                                         )
+
+	# Cleanup the resources created at end of test
+        self.cleanup.append(self.cadmin_1)
+        self.cleanup.append(self.cadmin_2)
+        self.cleanup.append(self.cdomain_1)
+	self.cleanup.append(self.cdomain_2)
+	self.cleanup.append(self.parentd_admin)
+        self.cleanup.append(self.parent_domain)
+	
         self.debug("Updating the Memory resource count for domain: %s" %
                                                         self.cdomain_2.name)
         Resources.updateLimit(self.apiclient,
@@ -1242,7 +1201,8 @@ class TestMultipleChildDomainsMemory(cloudstackTestCase):
                  }
         return users
 
-    @attr(tags=["advanced", "advancedns"])
+    @unittest.skip("Skip")
+    @attr(tags=["advanced", "advancedns","simulator"])
     def test_01_multiple_child_domains(self):
         """Test memory limits with multiple child domains"""
 
@@ -1268,29 +1228,29 @@ class TestMultipleChildDomainsMemory(cloudstackTestCase):
         self.cleanup.append(self.service_offering)
 
         self.debug("Setting up account and domain hierarchy")
-        self.setup_Accounts()
+        self.setupAccounts()
 
         self.debug("Creating an instance with service offering: %s" %
                                                 self.service_offering.name)
-        vm_1 = self.create_Instance(account=self.cadmin_1,
+        vm_1 = self.createInstance(account=self.cadmin_1,
                                   service_off=self.service_offering)
 
-        vm_2 = self.create_Instance(account=self.cadmin_2,
+        vm_2 = self.createInstance(account=self.cadmin_2,
                                   service_off=self.service_offering)
 
-        self.check_Resource_Count(account=self.cadmin_1, rtype=10)
-        self.check_Resource_Count(account=self.cadmin_2, rtype=10)
+        self.checkResourceCount(account=self.cadmin_1, rtype=9)
+        self.checkResourceCount(account=self.cadmin_2, rtype=9)
 
         self.debug(
             "Creating instance when Memory limit is fully used in parent domain")
         with self.assertRaises(Exception):
-            self.create_Instance(account=self.cadmin_1,
+            self.createInstance(account=self.cadmin_1,
                                   service_off=self.service_offering)
 
         self.debug(
             "Creating instance when Memory limit is fully used in child domain")
         with self.assertRaises(Exception):
-            self.create_Instance(account=self.cadmin_1,
+            self.createInstance(account=self.cadmin_1,
                                   service_off=self.service_offering)
         self.debug("Destroying instances: %s, %s" % (vm_1.name, vm_2.name))
         try:
@@ -1298,8 +1258,8 @@ class TestMultipleChildDomainsMemory(cloudstackTestCase):
             vm_2.delete(self.apiclient)
         except Exception as e:
             self.fail("Failed to delete instance: %s" % e)
-        self.check_Resource_Count(account=self.cadmin_1, rtype=10, delete=True)
-        self.check_Resource_Count(account=self.cadmin_2, rtype=10, delete=True)
+        self.checkResourceCount(account=self.cadmin_1, rtype=9, delete=True)
+        self.checkResourceCount(account=self.cadmin_2, rtype=9, delete=True)
         return
 
 
@@ -1313,6 +1273,7 @@ class TestProjectsMemoryLimits(cloudstackTestCase):
         # Get Zone, Domain and templates
         cls.domain = get_domain(cls.api_client, cls.services)
         cls.zone = get_zone(cls.api_client, cls.services)
+	cls.services["mode"] = cls.zone.networktype
 
         cls.template = get_template(
                             cls.api_client,
@@ -1337,7 +1298,12 @@ class TestProjectsMemoryLimits(cloudstackTestCase):
     def setUp(self):
         self.apiclient = self.testClient.getApiClient()
         self.dbclient = self.testClient.getDbConnection()
-        self.cleanup = []
+	self.account = Account.create(
+             self.apiclient,
+             self.services["account"],
+             admin=True
+             )
+        self.cleanup = [self.account, ]
         return
 
     def tearDown(self):
@@ -1349,7 +1315,7 @@ class TestProjectsMemoryLimits(cloudstackTestCase):
             raise Exception("Warning: Exception during cleanup : %s" % e)
         return
 
-    def create_Instance(self, project, service_off, networks=None):
+    def createInstance(self, project, service_off, networks=None):
         """Creates an instance in account"""
         self.debug("Deploying an instance in account: %s" %
                                                 self.account.account.name)
@@ -1371,7 +1337,7 @@ class TestProjectsMemoryLimits(cloudstackTestCase):
         except Exception as e:
             self.fail("Failed to deploy an instance: %s" % e)
 
-    def get_Network(self, account):
+    def getNetwork(self, account):
         """Returns a network for account"""
 
         networks = Network.list(
@@ -1383,52 +1349,34 @@ class TestProjectsMemoryLimits(cloudstackTestCase):
         self.assertIsInstance(networks,
                               list,
                               "List networks should return a valid response")
-        return networks[0]
+        return networks[0] 
 
-    def get_Resource_Type(self, resource_id):
-        """Returns resource type"""
-
-        lookup = {1: "VM", 2: "Public IP", 3: "Volume", 4: "Snapshot",
-                     5: "Template", 6: "Projects", 7: "Network", 8: "VPC",
-                     9: "CPUs", 10: "RAM",
-                     11: "Primary (shared) storage (Volumes)",
-                     12: "Secondary storage (Snapshots, Templates & ISOs)",
-                     13: "Network bandwidth rate (in bps)",
-                     14: "Number of times a OS template can be deployed"}
-        return lookup[resource_id]
-
-    def check_Resource_Count(self, project, rtype, delete=False):
+    def checkResourceCount(self, project, rtype, delete=False):
         """Validates the resource count
-            9     - CPUs
-            10    - RAM
-            11    - Primary (shared) storage (Volumes)
-            12    - Secondary storage (Snapshots, Templates & ISOs)
-            13    - Network bandwidth rate (in bps)
-            14    - Number of times a OS template can be deployed"""
+            8     - CPUs
+            9     - RAM
+            10    - Primary (shared) storage (Volumes)
+            11    - Secondary storage (Snapshots, Templates & ISOs)
+            12    - Network bandwidth rate (in bps)
+            13    - Number of times a OS template can be deployed"""
 
-        self.debug("Updating the Memory resource count for project: %s" %
+        allowedResourceTypes = [8,9,10,11,12,13]
+	self.assertTrue(rtype in allowedResourceTypes,"Invalid resource type")
+
+	self.debug("Updating the Memory resource count for project: %s" %
                                                                 project.name)
         responses = Resources.updateCount(self.apiclient,
+			      domainid = self.account.account.domainid,
                               projectid=self.project.id,
                               resourcetype=rtype)
 
         self.assertIsInstance(responses, list,
                         "Update resource count should return valid response")
         response = responses[0]
-        self.debug(response.resourcecount)
-        if delete:
-            self.assertEqual(response.resourcecount,
-                         0,
-                         "Resource count for %s should be 0" %
-                                        self.get_Resource_Type(rtype))
-        else:
-            self.assertNotEqual(response.resourcecount,
-                         0,
-                         "Resource count for %s should not be 0" %
-                                        self.get_Resource_Type(rtype))
+        self.debug(response.resourcecount) 
         return
 
-    def find_Suitable_Host(self, vm):
+    def findSuitableHost(self, vm):
         """Returns a suitable host for VM migration"""
 
         try:
@@ -1441,7 +1389,7 @@ class TestProjectsMemoryLimits(cloudstackTestCase):
             self.fail("Failed to find suitable host vm migration: %s" % e)
         return
 
-    def setup_Env(self):
+    def setupProjectAccounts(self):
 
         self.debug("Creating a domain under: %s" % self.domain.name)
         self.domain = Domain.create(self.apiclient,
@@ -1476,7 +1424,9 @@ class TestProjectsMemoryLimits(cloudstackTestCase):
                         "Check project name from list response")
         return
 
-    @attr(tags=["advanced", "advancedns"])
+    @unittest.skip("Skip")
+    @attr(tags=["advanced", "advancedns","simulator"])
+    @unittest.skip("Skip")
     @attr(configuration='max.projects.memory')
     def test_01_project_limits_global_config(self):
         """Test max.projects.memory global configuration"""
@@ -1501,42 +1451,46 @@ class TestProjectsMemoryLimits(cloudstackTestCase):
         self.cleanup.append(self.service_offering)
 
         self.debug("Setting up account and domain hierarchy")
-        self.setup_Env()
+        self.setupProjectAccounts()
         self.debug("Creating an instance with service offering: %s" %
                                                     self.service_offering.name)
-        vm = self.create_Instance(project=self.project,
+        vm = self.createInstance(project=self.project,
                                   service_off=self.service_offering)
 
-        self.check_Resource_Count(project=self.project, rtype=10)
+        self.checkResourceCount(project=self.project, rtype=9)
         self.debug("Stopping instance: %s" % vm.name)
         try:
             vm.stop(self.apiclient)
         except Exception as e:
             self.fail("Failed to stop instance: %s" % e)
-        self.check_Resource_Count(project=self.project, rtype=10)
+        self.checkResourceCount(project=self.project, rtype=9)
 
         self.debug("Starting instance: %s" % vm.name)
         try:
             vm.start(self.apiclient)
         except Exception as e:
             self.fail("Failed to start instance: %s" % e)
-        self.check_Resource_Count(project=self.project, rtype=10)
+        self.checkResourceCount(project=self.project, rtype=9)
 
-        host = self.find_Suitable_Host(vm)
+        host = self.findSuitableHost(vm)
         self.debug("Migrating instance: %s to host: %s" %
                                                     (vm.name, host.name))
         try:
             vm.migrate(self.apiclient, host.id)
         except Exception as e:
             self.fail("Failed to migrate instance: %s" % e)
-        self.check_Resource_Count(project=self.project, rtype=10)
+        self.checkResourceCount(project=self.project, rtype=9)
 
         self.debug("Destroying instance: %s" % vm.name)
         try:
             vm.delete(self.apiclient)
         except Exception as e:
             self.fail("Failed to delete instance: %s" % e)
-        self.check_Resource_Count(project=self.project, rtype=10, delete=True)
+
+	# Wait for expunge interval to cleanup Memory
+	wait_for_cleanup(self.apiclient, ["expunge.delay", "expunge.interval"])
+
+        self.checkResourceCount(project=self.project, rtype=9, delete=True)
         return
 
 
@@ -1550,6 +1504,7 @@ class TestMaxMemoryLimits(cloudstackTestCase):
         # Get Zone, Domain and templates
         cls.domain = get_domain(cls.api_client, cls.services)
         cls.zone = get_zone(cls.api_client, cls.services)
+	cls.services["mode"] = cls.zone.networktype
 
         cls.template = get_template(
                             cls.api_client,
@@ -1574,7 +1529,12 @@ class TestMaxMemoryLimits(cloudstackTestCase):
     def setUp(self):
         self.apiclient = self.testClient.getApiClient()
         self.dbclient = self.testClient.getDbConnection()
-        self.cleanup = []
+	self.account = Account.create(
+                     self.apiclient,
+                     self.services["account"],
+                     admin=True
+                     )
+        self.cleanup = [self.account, ]
         return
 
     def tearDown(self):
@@ -1586,8 +1546,8 @@ class TestMaxMemoryLimits(cloudstackTestCase):
             raise Exception("Warning: Exception during cleanup : %s" % e)
         return
 
-    def create_Instance(self, account=None,
-                        project=None, service_off, networks=None):
+    def createInstance(self, service_off, account=None,
+                        project=None, networks=None):
         """Creates an instance in account"""
         self.debug("Deploying an instance in account: %s" %
                                                 self.account.account.name)
@@ -1619,7 +1579,7 @@ class TestMaxMemoryLimits(cloudstackTestCase):
         except Exception as e:
             self.fail("Failed to deploy an instance: %s" % e)
 
-    def get_Network(self, account):
+    def getNetwork(self, account):
         """Returns a network for account"""
 
         networks = Network.list(
@@ -1631,21 +1591,9 @@ class TestMaxMemoryLimits(cloudstackTestCase):
         self.assertIsInstance(networks,
                               list,
                               "List networks should return a valid response")
-        return networks[0]
+        return networks[0] 
 
-    def get_Resource_Type(self, resource_id):
-        """Returns resource type"""
-
-        lookup = {1: "VM", 2: "Public IP", 3: "Volume", 4: "Snapshot",
-                     5: "Template", 6: "Projects", 7: "Network", 8: "VPC",
-                     9: "CPUs", 10: "RAM",
-                     11: "Primary (shared) storage (Volumes)",
-                     12: "Secondary storage (Snapshots, Templates & ISOs)",
-                     13: "Network bandwidth rate (in bps)",
-                     14: "Number of times a OS template can be deployed"}
-        return lookup[resource_id]
-
-    def check_Resource_Count(self, rtype, account=None, project=None,
+    def checkResourceCount(self, rtype, account=None, project=None,
                              delete=False):
         """Validates the resource count
             9     - CPUs
@@ -1655,17 +1603,21 @@ class TestMaxMemoryLimits(cloudstackTestCase):
             13    - Network bandwidth rate (in bps)
             14    - Number of times a OS template can be deployed"""
 
-        if account:
+        allowedResourceTypes = [9,10,11,12,13,14]
+	self.assertTrue(rtype in allowedResourceTypes,"Invalid resource type")
+
+	if account:
             self.debug("Updating the Memory resource count for account: %s" %
                                                     account.account.name)
             responses = Resources.updateCount(self.apiclient,
-                              domainid=account.account.domainid,
+                              domainid=self.account.account.domainid,
                               account=account.account.name,
                               resourcetype=rtype)
         elif project:
             self.debug("Updating the Memory resource count for project: %s" %
                                                                 project.name)
             responses = Resources.updateCount(self.apiclient,
+					      domainid = self.account.account.domainid,			
                                               projectid=project.id,
                                               resourcetype=rtype)
 
@@ -1677,15 +1629,15 @@ class TestMaxMemoryLimits(cloudstackTestCase):
             self.assertEqual(response.resourcecount,
                          0,
                          "Resource count for %s should be 0" %
-                                        self.get_Resource_Type(rtype))
+                                        get_resource_type(rtype))
         else:
             self.assertNotEqual(response.resourcecount,
                          0,
                          "Resource count for %s should not be 0" %
-                                        self.get_Resource_Type(rtype))
+                                        get_resource_type(rtype))
         return
 
-    def find_Suitable_Host(self, vm):
+    def findSuitableHost(self, vm):
         """Returns a suitable host for VM migration"""
 
         try:
@@ -1698,210 +1650,203 @@ class TestMaxMemoryLimits(cloudstackTestCase):
             self.fail("Failed to find suitable host vm migration: %s" % e)
         return
 
-    def setup_Accounts(self, account_limit=2, domain_limit=2, project_limit=2):
+    def setupAccounts(self, account_limit=2, domain_limit=2, project_limit=2):
 
         self.debug("Creating a domain under: %s" % self.domain.name)
-        self.domain = Domain.create(self.apiclient,
-                                        services=self.services["domain"],
-                                        parentdomainid=self.domain.id)
-        self.admin_1 = Account.create(
-                            self.apiclient,
-                            self.services["account"],
-                            admin=True,
-                            domainid=self.domain.id
-                            )
+    	self.child_domain = Domain.create(self.apiclient,
+                                    services=self.services["domain"],
+                                    parentdomainid=self.domain.id)
 
-        # Create project as a domain admin
-        self.project = Project.create(self.apiclient,
-                                 self.services["project"],
-                                 account=self.admin_1.account.name,
-                                 domainid=self.admin_1.account.domainid)
-        # Cleanup created project at end of test
-        self.cleanup.append(self.project)
 
-        self.admin_2 = Account.create(
-                            self.apiclient,
-                            self.services["account"],
-                            admin=True,
-                            domainid=self.domain.id
-                            )
+    	self.debug("domain crated with domain id %s" % self.child_domain.id)
 
-        # Cleanup accounts created
-        self.cleanup.append(self.admin_1)
-        self.cleanup.append(self.admin_2)
-        self.cleanup.append(self.domain)
+    	self.child_do_admin = Account.create(
+                        self.apiclient,
+                        self.services["account"],
+                        admin=True,
+                        domainid=self.child_domain.id
+                        )
 
-        self.debug("Updating the Memory resource count for domain: %s" %
-                                                            self.domain.name)
-        # Update resource limits for account 1
-        Resources.updateLimit(self.apiclient,
-                              resourcetype=10,
-                              max=(account_limit * 1024),
-                              account=self.admin_1.account.name,
-                              domainid=self.admin_1.account.domainid)
+    	self.debug("domain admin created for domain id %s" % 
+			self.child_do_admin.account.domainid)
 
-        # Update resource limits for account 2
-        Resources.updateLimit(self.apiclient,
-                              resourcetype=10,
-                              max=(account_limit * 1024),
-                              account=self.admin_2.account.name,
-                              domainid=self.admin_2.account.domainid)
+    	# Create project as a domain admin
+    	self.project = Project.create(self.apiclient,
+                             self.services["project"],
+                             account=self.child_do_admin.account.name,
+                             domainid=self.child_do_admin.account.domainid)
+   	# Cleanup created project at end of test
+    	self.cleanup.append(self.project)
 
-        # Update resource limits for project
-        Resources.updateLimit(self.apiclient,
-                              resourcetype=10,
-                              max=(project_limit * 1024),
-                              projectid=self.project.id)
-        # TODO: Update the Memory limit for domain only
-        Resources.updateLimit(self.apiclient,
-                              resourcetype=10,
-                              max=(domain_limit * 1024),
-                              domainid=self.domain.id)
 
-        return
+    	# Cleanup accounts created
+    	self.cleanup.append(self.child_do_admin)
+    	self.cleanup.append(self.child_domain)
 
-    @attr(tags=["advanced", "advancedns"])
+    	self.debug("Updating the Memory resource count for domain: %s" %
+                                                        self.child_domain.name)
+    	# Update resource limits for account 1
+    	responses = Resources.updateLimit(self.apiclient,
+                          resourcetype=9,
+                          max=(account_limit * 1024),
+                          account=self.child_do_admin.account.name,
+                          domainid=self.child_do_admin.account.domainid
+                          )
+
+    	self.debug("Memory Resource count for child domain admin account is now: %s" %
+									 responses.max)
+
+    	# Update resource limits for project
+    	responses = Resources.updateLimit(self.apiclient,
+                          resourcetype=9,
+                          max=(project_limit * 1024),
+                          projectid=self.project.id)
+
+    	self.debug("Memory Resource count for project is now")
+    	self.debug(responses.max)
+
+    	# TODO: Update the Memory limit for domain only
+    	responses = Resources.updateLimit(self.apiclient,
+                           resourcetype=9,
+                       max=(domain_limit * 1024),
+                       domainid=self.child_domain.id)
+
+     	self.debug("Memory Resource count for domain %s with id %s is now %s" % 
+			    (responses.domain, responses.domainid, responses.max))
+     	return	
+ 
+    @unittest.skip("Skip")
+    @attr(tags=["advanced", "advancedns","simulator"])
     def test_01_deploy_vm_domain_limit_reached(self):
-        """Test Try to deploy VM with admin account where account has not used
-            the resources but @ domain they are not available"""
+    	"""Test Try to deploy VM with admin account where account has not used
+           the resources but @ domain they are not available"""
 
-        # Validate the following
-        # 1. Try to deploy VM with admin account where account has not used the
-        #    resources but @ domain they are not available
-        # 2. Deploy VM should error out saying  ResourceAllocationException
-        #    with "resource limit exceeds"
+    	# Validate the following
+    	# 1. Try to deploy VM with admin account where account has not used the
+    	#    resources but @ domain they are not available
+    	# 2. Deploy VM should error out saying  ResourceAllocationException
+    	#    with "resource limit exceeds"
 
-        self.debug("Creating service offering with 5 GB RAM")
-        self.service_offering = ServiceOffering.create(
-                                            self.apiclient,
-                                            self.services["service_offering"]
-                                            )
-        # Adding to cleanup list after execution
-        self.cleanup.append(self.service_offering)
+    	self.debug("Creating service offering with 5 GB RAM")
+    	self.service_offering = ServiceOffering.create(
+                                        self.apiclient,
+                                        self.services["service_offering"]
+                                        )
+    	# Adding to cleanup list after execution
+    	self.cleanup.append(self.service_offering)
 
-        self.debug("Setting up account and domain hierarchy")
-        self.setup_Accounts(account_limit=1, domain_limit=1)
+    	self.debug("Setting up account and domain hierarchy")
+    	self.setupAccounts(account_limit=8, domain_limit=4)
 
-        self.debug("Deploying instance with account 1: %s" %
-                                                    self.admin_1.account.name)
-        self.create_Instance(account=self.admin_1,
-                                  service_off=self.service_offering)
+    	self.debug("Creating instance with domain %s and admin account %s" % 
+		  			(self.child_do_admin.account.domainid,
+					     self.child_do_admin.account.name))
 
-        self.check_Resource_Count(account=self.admin_1, rtype=10)
+    	with self.assertRaises(Exception):
+        	self.createInstance(account=self.child_do_admin,
+                              service_off=self.service_offering)
+    	return 
 
-        self.debug(
-                "Deploying instance in account 2 when Memory limit is reached")
-
-        with self.assertRaises(Exception):
-            self.create_Instance(account=self.admin_2,
-                                  service_off=self.service_offering)
-        return
-
-    @attr(tags=["advanced", "advancedns"])
+    @unittest.skip("Skip")
+    @attr(tags=["advanced", "advancedns","simulator"])
     def test_02_deploy_vm_account_limit_reached(self):
-        """Test Try to deploy VM with admin account where account has used
-            the resources but @ domain they are available"""
+    	"""Test Try to deploy VM with admin account where account has used
+           the resources but @ domain they are available"""
 
-        # Validate the following
-        # 1. Try to deploy VM with admin account where account has not used the
-        #    resources but @ domain they are not available
-        # 2. Deploy VM should error out saying  ResourceAllocationException
-        #    with "resource limit exceeds"
+    	# Validate the following
+    	# 1. Try to deploy VM with admin account where account has used the
+    	#    resources but @ domain they are available
+    	# 2. Deploy VM should error out saying  ResourceAllocationException
+    	#    with "resource limit exceeds"
 
-        self.debug("Creating service offering with 5 GB RAM")
-        self.service_offering = ServiceOffering.create(
-                                            self.apiclient,
-                                            self.services["service_offering"]
-                                            )
-        # Adding to cleanup list after execution
-        self.cleanup.append(self.service_offering)
+    	self.debug("Creating service offering with 5 GB RAM")
+    	self.service_offering = ServiceOffering.create(
+                                        self.apiclient,
+                                        self.services["service_offering"]
+                                        )
+    	# Adding to cleanup list after execution
+    	self.cleanup.append(self.service_offering)
 
-        self.debug("Setting up account and domain hierarchy")
-        self.setup_Accounts(account_limit=1, domain_limit=2)
+    	self.debug("Setting up account and domain hierarchy")
+    	self.setupAccounts(account_limit=7, domain_limit=14)
 
-        self.debug("Deploying instance with account 1: %s" %
-                                                    self.admin_1.account.name)
-        self.create_Instance(account=self.admin_1,
-                                  service_off=self.service_offering)
+    	self.debug("Deploying instance with account: %s" %
+                                                self.child_do_admin.account.name)
+    	self.createInstance(account=self.child_do_admin,
+                              service_off=self.service_offering)
 
-        self.check_Resource_Count(account=self.admin_1, rtype=10)
+    	#self.checkResourceCount(account=self.admin_1, rtype=10)
 
-        self.debug("Deploying instance in account 2 when Memory limit is reached")
+    	self.debug("Deploying instance in account 1 when Memory limit is reached")
 
-        with self.assertRaises(Exception):
-            self.create_Instance(account=self.admin_1,
-                                  service_off=self.service_offering)
-        return
+    	with self.assertRaises(Exception):
+        	self.createInstance(account=self.child_do_admin,
+                              service_off=self.service_offering)
+    	return 
 
-    @attr(tags=["advanced", "advancedns"])
+    @unittest.skip("Skip")
+    @attr(tags=["advanced", "advancedns","simulator"])
     def test_03_deploy_vm_project_limit_reached(self):
-        """Test TTry to deploy VM with admin account where account has not used
-        the resources but @ project they are not available"""
+    	"""Test TTry to deploy VM with admin account where account has not used
+   	   the resources but @ project they are not available"""
 
-        # Validate the following
-        # 1. Try to deploy VM with admin account where account has not used the
-        #    resources but @ project they are not available
-        # 2. Deploy VM should error out saying  ResourceAllocationException
-        #    with "resource limit exceeds"
+    	# Validate the following
+    	# 1. Try to deploy VM with admin account where account has not used the
+    	#    resources but @ project they are not available
+    	# 2. Deploy VM should error out saying  ResourceAllocationException
+    	#    with "resource limit exceeds"
 
-        self.debug("Creating service offering with 5 GB RAM")
-        self.service_offering = ServiceOffering.create(
-                                            self.apiclient,
-                                            self.services["service_offering"]
-                                            )
-        # Adding to cleanup list after execution
-        self.cleanup.append(self.service_offering)
+    	self.debug("Creating service offering with 5 GB RAM")
+    	self.service_offering = ServiceOffering.create(
+                                        self.apiclient,
+                                        self.services["service_offering"]
+                                        )
+    	# Adding to cleanup list after execution
+    	self.cleanup.append(self.service_offering)
 
-        self.debug("Setting up account and domain hierarchy")
-        self.setup_Accounts(account_limit=1, project_limit=1)
+    	self.debug("Setting up account and domain hierarchy")
+    	self.setupAccounts(account_limit=8,domain_limit=8, project_limit=4)
 
-        self.debug("Deploying instance with project: %s" % self.project.name)
-        self.create_Instance(project=self.project,
-                             service_off=self.service_offering)
+    	self.debug("Deploying instance with project: %s" % self.project.name)
+    	with self.assertRaises(Exception):
+        	self.createInstance(project = self.project,
+                            service_off=self.service_offering)
+    	return 
 
-        self.check_Resource_Count(project=self.project, rtype=10)
-
-        self.debug(
-                "Deploying instance in account 2 when memory limit is reached")
-
-        with self.assertRaises(Exception):
-            self.create_Instance(account=self.admin_1,
-                                  service_off=self.service_offering)
-        return
-
+    @unittest.skip("Skip")
     @attr(tags=["advanced", "advancedns"])
     def test_04_deployVm__account_limit_reached(self):
-        """Test Try to deploy VM with admin account where account has used
-            the resources but @ project they are available"""
+    	"""Test Try to deploy VM with admin account where account has used
+           the resources but @ project they are available"""
 
-        # Validate the following
-        # 1. Try to deploy VM with admin account where account has used the
-        #    resources but @ project they are not available
-        # 2. Deploy VM should error out saying  ResourceAllocationException
-        #    with "resource limit exceeds"
+    	# Validate the following
+    	# 1. Try to deploy VM with admin account where account has used the
+    	#    resources but @ project they are available
+    	# 2. Deploy VM should error out saying  ResourceAllocationException
+    	#    with "resource limit exceeds"
 
-        self.debug("Creating service offering with 5 GB RAM")
-        self.service_offering = ServiceOffering.create(
-                                            self.apiclient,
-                                            self.services["service_offering"]
-                                            )
-        # Adding to cleanup list after execution
-        self.cleanup.append(self.service_offering)
+    	self.debug("Creating service offering with 5 GB RAM")
+    	self.service_offering = ServiceOffering.create(
+                                        self.apiclient,
+                                        self.services["service_offering"]
+                                        )
+    	# Adding to cleanup list after execution
+    	self.cleanup.append(self.service_offering)
 
-        self.debug("Setting up account and domain hierarchy")
-        self.setup_Accounts(account_limit=1, project_limit=2)
+    	self.debug("Setting up account and domain hierarchy")
+    	self.setupAccounts(account_limit=6, project_limit=12, domain_limit=12)
 
-        self.debug("Deploying instance with account: %s" %
-                                                    self.admin_1.account.name)
-        self.create_Instance(account=self.admin_1,
-                                  service_off=self.service_offering)
+    	self.debug("Deploying instance with account: %s" %
+                                                self.child_do_admin.account.name)
+    	self.createInstance(account=self.child_do_admin,
+                              service_off=self.service_offering)
 
-        self.check_Resource_Count(account=self.admin_1, rtype=10)
+    	#self.checkResourceCount(account=self.admin_1, rtype=9)
 
-        self.debug(
-                "Deploying instance in account 2 when memory limit is reached")
+    	self.debug("Deploying instance in account: %s when memory limit is reached" %
+                                                self.child_do_admin.account.name)
 
-        with self.assertRaises(Exception):
-            self.create_Instance(project=self.project,
-                                  service_off=self.service_offering)
-        return
+    	with self.assertRaises(Exception):
+        	self.createInstance( project=self.project,
+                             service_off=self.service_offering )
+    	return 

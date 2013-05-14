@@ -319,7 +319,6 @@ class TestCPULimits(cloudstackTestCase):
         self.check_Resource_Count(account=self.account, rtype=9)
         return
 
-@unittest.skip("Skip - Work in progress")
 class TestDomainCPULimits(cloudstackTestCase):
 
     @classmethod
@@ -617,7 +616,6 @@ class TestDomainCPULimits(cloudstackTestCase):
         return
 
 
-@unittest.skip("Skip - Work in progress")
 class TestCPULimitsUpdateResources(cloudstackTestCase):
 
     @classmethod
@@ -920,7 +918,6 @@ class TestCPULimitsUpdateResources(cloudstackTestCase):
         return
 
 
-@unittest.skip("Skip - Work in progress")
 class TestMultipleChildDomains(cloudstackTestCase):
 
     @classmethod
@@ -1182,7 +1179,6 @@ class TestMultipleChildDomains(cloudstackTestCase):
         return
 
 
-@unittest.skip("Skip - Work in progress")
 class TestProjectsCPULimits(cloudstackTestCase):
 
     @classmethod
@@ -1420,7 +1416,6 @@ class TestProjectsCPULimits(cloudstackTestCase):
         return
 
 
-@unittest.skip("Skip - Work in progress")
 class TestMaxCPULimits(cloudstackTestCase):
 
     @classmethod

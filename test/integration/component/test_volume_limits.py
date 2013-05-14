@@ -95,7 +95,6 @@ class Services:
                         # Networking mode: Advanced, Basic
                     }
 
-@unittest.skip("skipping")
 class TestVolumeLimits(cloudstackTestCase):
 
     @classmethod
@@ -476,7 +475,6 @@ class TestVolumeLimits(cloudstackTestCase):
         return
 
 
-@unittest.skip("skipping")
 class TestChildDomainLimits(cloudstackTestCase):
 
     @classmethod
@@ -944,7 +942,6 @@ class TestChildDomainLimits(cloudstackTestCase):
         return
 
 
-@unittest.skip("skipping")
 class TestMultipleChildDomain(cloudstackTestCase):
 
     @classmethod
@@ -1417,7 +1414,6 @@ class TestMultipleChildDomain(cloudstackTestCase):
         return
 
 
-@unittest.skip("skipping")
 class TestProjectsVolumeLimits(cloudstackTestCase):
 
     @classmethod
@@ -1655,7 +1651,6 @@ class TestProjectsVolumeLimits(cloudstackTestCase):
         return
 
 
-@unittest.skip("skipping")
 class TestMaxVolumeLimits(cloudstackTestCase):
 
     @classmethod
@@ -2023,7 +2018,6 @@ class TestMaxVolumeLimits(cloudstackTestCase):
         return
 
 
-@unittest.skip("skipping")
 class TestResizeVolume(cloudstackTestCase):
 
     @classmethod
