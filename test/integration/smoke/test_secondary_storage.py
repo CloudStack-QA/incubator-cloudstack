@@ -52,7 +52,7 @@ class TestSecStorageServices(cloudstackTestCase):
         # Get Zone and pod
         self.zones = []
         self.pods = []
-        for zone in self.config.zones:
+        for zone in self.zones:
             cmd = listZones.listZonesCmd()
             cmd.name = zone.name
             z = self.apiclient.listZones(cmd)
@@ -171,7 +171,7 @@ class TestSecStorageServices(cloudstackTestCase):
         # in Ready state
 
         hypervisors = {}
-        for zone in self.config.zones:
+        for zone in self.zones:
             for pod in zone.pods:
                 for cluster in pod.clusters:
                     hypervisors[cluster.hypervisor] = "self"
