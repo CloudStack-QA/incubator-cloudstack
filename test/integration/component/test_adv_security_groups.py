@@ -43,7 +43,7 @@ class Services:
                             "lastname": "user",
                             "username": "secgrp",
                             # Random characters are appended for unique name
-                            "password": "fr3sca",
+                            "password": "password",
                         },
                         "service_offering": {
                             "name": "Tiny Instance",

@@ -54,7 +54,7 @@ class Services:
                                     "username": "root",
                                     "password": "password",
                                     "ssh_port": 22,
-                                    "hypervisor": 'KVM',
+                                    "hypervisor": 'XenServer',
                                     "privateport": 22,
                                     "publicport": 22,
                                     "protocol": 'TCP',

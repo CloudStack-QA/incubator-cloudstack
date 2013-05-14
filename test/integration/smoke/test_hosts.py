@@ -45,10 +45,10 @@ class Services:
                                         # Hypervisor type
                                     },
                                    1: {
-                                        "clustername": "KVM Cluster",
+                                        "clustername": "XenServer Cluster",
                                         "clustertype": "CloudManaged",
                                         # CloudManaged or ExternalManaged"
-                                        "hypervisor": "KVM",
+                                        "hypervisor": "XenServer",
                                         # Hypervisor type
                                         },
                                    2: {
@@ -57,7 +57,7 @@ class Services:
                                         "clustertype": 'ExternalManaged',
                                         # CloudManaged or ExternalManaged"
                                         "username": 'administrator',
-                                        "password": 'fr3sca',
+                                        "password": 'password',
                                         "url": 'http://192.168.100.17/CloudStack-Clogeny-Pune/Pune-1',
                                         # Format:http://vCenter Host/Datacenter/Cluster
                                         "clustername": 'VMWare Cluster',
@@ -73,16 +73,16 @@ class Services:
                                           # CloudManaged or ExternalManaged"
                                           "url": 'http://192.168.100.211',
                                           "username": "root",
-                                          "password": "fr3sca",
+                                          "password": "password",
                                           },
                                  "kvm": {
-                                          "hypervisor": 'KVM',
+                                          "hypervisor": 'XenServer',
                                           # Hypervisor type
                                           "clustertype": 'CloudManaged',
                                           # CloudManaged or ExternalManaged"
                                           "url": 'http://192.168.100.212',
                                           "username": "root",
-                                          "password": "fr3sca",
+                                          "password": "password",
                                           },
                                  "vmware": {
                                           "hypervisor": 'VMware',
@@ -91,7 +91,7 @@ class Services:
                                           # CloudManaged or ExternalManaged"
                                           "url": 'http://192.168.100.203',
                                           "username": "administrator",
-                                          "password": "fr3sca",
+                                          "password": "password",
                                          },
                                  },
                        }
@@ -120,16 +120,16 @@ class TestHosts(cloudstackTestCase):
 
     @unittest.skip("skipped - our environments will not add hosts")
     def test_01_clusters(self):
-        """Test Add clusters & hosts - XEN, KVM, VWARE
+        """Test Add clusters & hosts - XEN, XenServer, VWARE
         """
 
         # Validate the following:
-        # 1. Verify hypervisortype returned by API is Xen/KVM/VWare
+        # 1. Verify hypervisortype returned by API is Xen/XenServer/VWare
         # 2. Verify that the cluster is in 'Enabled' allocation state
         # 3. Verify that the host is added successfully and in Up state
         #    with listHosts API response
 
-        #Create clusters with Hypervisor type XEN/KVM/VWare
+        #Create clusters with Hypervisor type XEN/XenServer/VWare
         for k, v in self.services["clusters"].items():
             cluster = Cluster.create(
                                      self.apiclient,

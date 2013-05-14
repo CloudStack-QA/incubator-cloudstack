@@ -22,6 +22,7 @@ from marvin.cloudstackAPI import *
 from marvin.integration.lib.utils import *
 from marvin.integration.lib.base import *
 from marvin.integration.lib.common import *
+from nose.plugins.attrib import attr
 #Import System modules
 
 class TestUpdateConfigWithScope(cloudstackTestCase):
@@ -31,6 +32,7 @@ class TestUpdateConfigWithScope(cloudstackTestCase):
     def setUp(self):
         self.apiClient = self.testClient.getApiClient()
 
+    @attr(tags=["simulator", "devcloud", "basic", "advanced"])
     def test_UpdateConfigParamWithScope(self):
         """
         test update configuration setting at zone level scope
@@ -39,22 +41,24 @@ class TestUpdateConfigWithScope(cloudstackTestCase):
         updateConfigurationCmd = updateConfiguration.updateConfigurationCmd()
         updateConfigurationCmd.name = "use.external.dns"
         updateConfigurationCmd.value = "true"
-        updateConfigurationCmd.scope = "zone"
-        updateConfigurationCmd.id = 1
+        updateConfigurationCmd.scopename = "zone"
+        updateConfigurationCmd.scopeid = 1
 
         updateConfigurationResponse = self.apiClient.updateConfiguration(updateConfigurationCmd)
         self.debug("updated the parameter %s with value %s"%(updateConfigurationResponse.name, updateConfigurationResponse.value))
 
         listConfigurationsCmd = listConfigurations.listConfigurationsCmd()
         listConfigurationsCmd.cfgName = updateConfigurationResponse.name
-        listConfigurationsCmd.scope = "zone"
-        listConfigurationsCmd.id = 1
+        listConfigurationsCmd.scopename = "zone"
+        listConfigurationsCmd.scopeid = 1
         listConfigurationsResponse = self.apiClient.listConfigurations(listConfigurationsCmd)
 
         self.assertNotEqual(len(listConfigurationsResponse), 0, "Check if the list API \
                             returns a non-empty response")
+        for item in listConfigurationsResponse:
+            if item.name == updateConfigurationResponse.name:
+                configParam = item
 
-        configParam = listConfigurationsResponse[0]
         self.assertEqual(configParam.value, updateConfigurationResponse.value, "Check if the update API returned \
                          is the same as the one we got in the list API")
 
@@ -67,6 +71,6 @@ class TestUpdateConfigWithScope(cloudstackTestCase):
         updateConfigurationCmd = updateConfiguration.updateConfigurationCmd()
         updateConfigurationCmd.name = "use.external.dns"
         updateConfigurationCmd.value = "false"
-        updateConfigurationCmd.scope = "zone"
-        updateConfigurationCmd.id = 1
+        updateConfigurationCmd.scopename = "zone"
+        updateConfigurationCmd.scopeid = 1
         self.apiClient.updateConfiguration(updateConfigurationCmd)

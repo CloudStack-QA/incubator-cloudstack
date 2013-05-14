@@ -419,7 +419,7 @@ class TestSingleSignOnEncryption(cloudstackTestCase):
             raise Exception("Warning: Exception during cleanup : %s" % e)
         return
 
-    @attr(tags=["advanced", "configuration", "advancedns", "simulator",
+    @attr(tags=["advanced","advancedns", "configuration", "advancedns", "simulator",
                 "api", "basic", "eip", "sg"])
     def test_SingleSignOnEncryption(self):
         """List listConfigurations API should get decrypted

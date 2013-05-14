@@ -505,7 +505,7 @@ class TestVPCNetworkPFRules(cloudstackTestCase):
         return nwacl_internet_1
 
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     def test_01_network_services_VPC_StopCreatePF(self):
         """ Test case no 204 : Create PF rules for a single virtual network of a VPC,
                 using a new Public IP Address available with the VPC when Virtual Router is in Stopped State
@@ -531,7 +531,7 @@ class TestVPCNetworkPFRules(cloudstackTestCase):
 
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     def test_02_network_services_VPC_CreatePF(self):
         """ Test case no 190 : Create PF rules for a single virtual network of a VPC using a
                 new Public IP Address available with the VPC when Virtual Router is in Running State
@@ -552,7 +552,7 @@ class TestVPCNetworkPFRules(cloudstackTestCase):
         self.check_ssh_into_vm(vm_1, public_ip_1, testnegative=False)
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     @unittest.skip("Implemented but not executed: VPC with multiple network fails to set PF rule.")
     def test_03_network_services_VPC_StopCreateMultiplePF(self):
         """ Test case no 205 : Create PF rules for a two/multiple virtual networks of a VPC using
@@ -586,7 +586,7 @@ class TestVPCNetworkPFRules(cloudstackTestCase):
         self.check_ssh_into_vm(vm_2, public_ip_2, testnegative=False)
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     @unittest.skip("Implemented but not executed: VPC with multiple network fails to set PF rule.")
     def test_04_network_services_VPC_CreateMultiplePF(self):
         """ Test case no 191 : Create PF rules for a two/multiple virtual networks of a VPC using a
@@ -619,7 +619,7 @@ class TestVPCNetworkPFRules(cloudstackTestCase):
         self.check_ssh_into_vm(vm_2, public_ip_2, testnegative=False)
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     @unittest.skip("Implemented but not executed: VPC with multiple network fails to set PF rule.")
     def test_05_network_services_VPC_StopDeletePF(self):
         """ Test case no 207 : Delete few(not all) PF rules for a single virtual network of
@@ -653,7 +653,7 @@ class TestVPCNetworkPFRules(cloudstackTestCase):
         self.check_wget_from_vm(vm_1, public_ip_1, testnegative=True)
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     @unittest.skip("Implemented but not executed: VPC with multiple network fails to set PF rule.")
     def test_06_network_services_VPC_DeletePF(self):
         """ Test case no 193 : Delete few(not all) PF rules for a single virtual network of
@@ -683,7 +683,7 @@ class TestVPCNetworkPFRules(cloudstackTestCase):
         self.check_wget_from_vm(vm_1, public_ip_1, testnegative=True)
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     @unittest.skip("Implemented but not executed: VPC with multiple network fails to set PF rule.")
     def test_07_network_services_VPC_StopDeleteAllPF(self):
         """ Test case no 208 : Delete all PF rules for a single virtual network of a
@@ -720,7 +720,7 @@ class TestVPCNetworkPFRules(cloudstackTestCase):
         self.check_wget_from_vm(vm_1, public_ip_1, testnegative=True)
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     @unittest.skip("Implemented but not executed: VPC with multiple network fails to set PF rule.")
     def test_08_network_services_VPC_DeleteAllPF(self):
         """ Test case no 194 : Delete all PF rules for a single virtual network of a
@@ -753,7 +753,7 @@ class TestVPCNetworkPFRules(cloudstackTestCase):
         self.check_wget_from_vm(vm_1, public_ip_1, testnegative=True)
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     @unittest.skip("Implemented but not executed: VPC with multiple network fails to set PF rule.")
     def test_09_network_services_VPC_StopDeleteAllMultiplePF(self):
         """ Test case no 209 : Delete all PF rules for two/multiple virtual networks of a VPC.
@@ -816,7 +816,7 @@ class TestVPCNetworkPFRules(cloudstackTestCase):
         self.check_wget_from_vm(vm_4, public_ip_2, testnegative=True)
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     @unittest.skip("Implemented but not executed: VPC with multiple network fails to set PF rule.")
     def test_10_network_services_VPC_DeleteAllMultiplePF(self):
         """ Test case no 195: Delete all PF rules for two/multiple virtual networks of a VPC.

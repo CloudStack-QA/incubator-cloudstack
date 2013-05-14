@@ -49,7 +49,7 @@ class Services:
                                     "displaytext": "Tiny Instance",
                                     "cpunumber": 1,
                                     "cpuspeed": 100,    # in MHz
-                                    "memory": 64,       # In MBs
+                                    "memory": 128,       # In MBs
                         },
                         "disk_offering": {
                                     "displaytext": "Small",
@@ -72,7 +72,7 @@ class Services:
                         "template": {
                                     "displaytext": "Cent OS Template",
                                     "name": "Cent OS Template",
-                                    "ostypeid": '01853327-513e-4508-9628-f1f55db1946f',
+                                    "ostypeid": '28560276-b821-11e2-90e0-06b270000059',
                                     "templatefilter": 'self',
                         },
                         "ostype": 'CentOS 5.3 (64-bit)',

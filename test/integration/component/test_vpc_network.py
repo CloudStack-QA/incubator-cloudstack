@@ -295,7 +295,7 @@ class TestVPCNetwork(cloudstackTestCase):
         self.debug("VPC network validated - %s" % network.name)
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     def test_01_create_network(self):
         """ Test create network in VPC
         """
@@ -387,7 +387,7 @@ class TestVPCNetwork(cloudstackTestCase):
                          )
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     def test_02_create_network_fail(self):
         """ Test create network in VPC
         """
@@ -551,7 +551,7 @@ class TestVPCNetwork(cloudstackTestCase):
                          )
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     def test_04_create_multiple_networks_with_lb(self):
         """ Test create multiple networks with LB service (Should fail)
         """
@@ -706,7 +706,7 @@ class TestVPCNetwork(cloudstackTestCase):
         self.debug("Network creation failed")
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     @unittest.skip("Skipping - able to create network with RvR")
     def test_06_create_network_with_rvr(self):
         """ Test create network with eredundant router capability
@@ -781,7 +781,7 @@ class TestVPCNetwork(cloudstackTestCase):
         self.debug("Network creation failed")
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     def test_07_create_network_unsupported_services(self):
         """ Test create network services not supported by VPC (Should fail)
         """
@@ -851,7 +851,7 @@ class TestVPCNetwork(cloudstackTestCase):
         self.debug("Network creation failed as VPC doesn't have LB service")
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     def test_08_create_network_without_sourceNAT(self):
         """ Test create network without sourceNAT service in VPC (should fail)
         """
@@ -916,7 +916,7 @@ class TestVPCNetwork(cloudstackTestCase):
         self.debug("Network creation failed as VPC doesn't have LB service")
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     def test_09_create_network_shared_nwoff(self):
         """ Test create network with shared network offering
         """
@@ -985,7 +985,7 @@ class TestVPCNetwork(cloudstackTestCase):
         self.debug("Network creation failed")
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     def test_10_create_network_with_conserve_mode(self):
         """ Test create network with conserve mode ON
         """
@@ -1163,7 +1163,7 @@ class TestVPCNetworkRanges(cloudstackTestCase):
         self.debug("VPC network validated - %s" % network.name)
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     def test_01_create_network_outside_range(self):
         """ Test create network outside cidr range of VPC
         """
@@ -1225,7 +1225,7 @@ class TestVPCNetworkRanges(cloudstackTestCase):
             "Network creation failed as network cidr range is outside of vpc")
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     def test_02_create_network_outside_range(self):
         """ Test create network outside cidr range of VPC
         """
@@ -1287,7 +1287,7 @@ class TestVPCNetworkRanges(cloudstackTestCase):
             "Network creation failed as network cidr range is outside of vpc")
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     def test_03_create_network_inside_range(self):
         """ Test create network inside cidr range of VPC
         """
@@ -1352,7 +1352,7 @@ class TestVPCNetworkRanges(cloudstackTestCase):
             "Network creation failed as network cidr range is inside of vpc")
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     def test_04_create_network_overlapping_range(self):
         """ Test create network overlapping cidr range of VPC
         """
@@ -1475,7 +1475,7 @@ class TestVPCNetworkRanges(cloudstackTestCase):
             "Network creation failed as network range overlaps each other")
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     def test_05_create_network_diff_account(self):
         """ Test create network from different account in VPC
         """
@@ -1669,7 +1669,7 @@ class TestVPCNetworkUpgrade(cloudstackTestCase):
         self.debug("VPC network validated - %s" % network.name)
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     @unittest.skip("Error while NW upgrade - Failed to implement network (with specified id) elements and resources as a part of network update")
     def test_01_network_services_upgrade(self):
         """ Test update Network that is part of a VPC to a network offering
@@ -2024,7 +2024,7 @@ class TestVPCNetworkUpgrade(cloudstackTestCase):
                          )
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     def test_02_network_vpcvr2vr_upgrade(self):
         """ Test update Network that is NOT part of a VPC to a nw offering
             that has services that are provided by VPCVR and vice versa.
@@ -2371,7 +2371,7 @@ class TestVPCNetworkGc(cloudstackTestCase):
         self.debug("VPC network validated - %s" % network.name)
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     def test_01_wait_network_gc(self):
         """ Test stop all the Vms that are part of the a Network
             (Wait for network GC).Start 1 Vm from the network.
@@ -2413,7 +2413,7 @@ class TestVPCNetworkGc(cloudstackTestCase):
                  )
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     def test_02_start_vm_network_gc(self):
         """ Test network rules after starting an instance in VPC
         """
@@ -2487,7 +2487,7 @@ class TestVPCNetworkGc(cloudstackTestCase):
                          )
         return
 
-    @attr(tags=["advanced", "intervlan"])
+    @attr(tags=["advanced","advancedns", "intervlan"])
     def test_03_restart_vpcvr(self):
         """ Test Stop all the Vms that are part of the a Network
             (Wait for network GC).Restart VPCVR.

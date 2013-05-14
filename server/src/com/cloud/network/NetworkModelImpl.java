@@ -52,11 +52,13 @@ import com.cloud.exception.InvalidParameterValueException;
 import com.cloud.exception.PermissionDeniedException;
 import com.cloud.exception.UnsupportedServiceException;
 import com.cloud.hypervisor.Hypervisor.HypervisorType;
+import com.cloud.server.ConfigurationServer;
 import com.cloud.network.IpAddress.State;
 import com.cloud.network.Network.Capability;
 import com.cloud.network.Network.GuestType;
 import com.cloud.network.Network.Provider;
 import com.cloud.network.Network.Service;
+import com.cloud.network.Networks.IsolationType;
 import com.cloud.network.Networks.TrafficType;
 import com.cloud.network.addr.PublicIp;
 import com.cloud.network.dao.FirewallRulesDao;
@@ -143,6 +145,8 @@ public class NetworkModelImpl extends ManagerBase implements NetworkModel {
    
     @Inject
     PodVlanMapDao _podVlanMapDao;
+    @Inject
+    ConfigurationServer _configServer;
 
     List<NetworkElement> _networkElements;
     public List<NetworkElement> getNetworkElements() {
@@ -921,9 +925,9 @@ public class NetworkModelImpl extends ManagerBase implements NetworkModel {
             }
         }
         if (isUserVmsDefaultNetwork || isDomRGuestOrPublicNetwork) {
-            return _configMgr.getServiceOfferingNetworkRate(vm.getServiceOfferingId());
+            return _configMgr.getServiceOfferingNetworkRate(vm.getServiceOfferingId(), network.getDataCenterId());
         } else {
-            return _configMgr.getNetworkOfferingNetworkRate(ntwkOff.getId());
+            return _configMgr.getNetworkOfferingNetworkRate(ntwkOff.getId(), network.getDataCenterId());
         }
     }
 
@@ -1564,8 +1568,8 @@ public class NetworkModelImpl extends ManagerBase implements NetworkModel {
     }
 
     @Override
-    public String getDefaultNetworkDomain() {
-        return _networkDomain;
+    public String getDefaultNetworkDomain(long zoneId) {
+        return _configServer.getConfigValue(Config.GuestDomainSuffix.key(), Config.ConfigurationParameterScope.zone.toString(), zoneId);
     }
 
     @Override
@@ -1663,20 +1667,17 @@ public class NetworkModelImpl extends ManagerBase implements NetworkModel {
         List<String> ips = _nicDao.listIpAddressInNetwork(network.getId());
         List<String> secondaryIps = _nicSecondaryIpDao.listSecondaryIpAddressInNetwork(network.getId());
         ips.addAll(secondaryIps);
-        Set<Long> allPossibleIps = NetUtils.getAllIpsFromCidr(cidr[0], Integer.parseInt(cidr[1]));
         Set<Long> usedIps = new TreeSet<Long>(); 
-        
+
         for (String ip : ips) {
             if (requestedIp != null && requestedIp.equals(ip)) {
                 s_logger.warn("Requested ip address " + requestedIp + " is already in use in network" + network);
                 return null;
             }
-    
+
             usedIps.add(NetUtils.ip2Long(ip));
         }
-        if (usedIps.size() != 0) {
-            allPossibleIps.removeAll(usedIps);
-        }
+        Set<Long> allPossibleIps = NetUtils.getAllIpsFromCidr(cidr[0], Integer.parseInt(cidr[1]), usedIps);
 
         String gateway = network.getGateway();
         if ((gateway != null) && (allPossibleIps.contains(NetUtils.ip2Long(gateway))))
@@ -2048,5 +2049,11 @@ public class NetworkModelImpl extends ManagerBase implements NetworkModel {
             }
         }
         return null;
+    }
+    
+    
+    @Override
+    public Networks.IsolationType[] listNetworkIsolationMethods() {
+        return Networks.IsolationType.values();
     }
 }

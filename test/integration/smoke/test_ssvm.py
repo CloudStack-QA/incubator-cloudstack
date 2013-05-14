@@ -335,7 +335,7 @@ class TestSSVMs(cloudstackTestCase):
         self.debug("Running SSVM check script")
 
         if self.apiclient.hypervisor.lower() == 'vmware':
-            # SSH into SSVMs is done via management server for VMWARE
+            # SSH into SSVMs is done via management server for XenServer
             result = get_process_status(
                                 self.apiclient.connection.mgtSvr,
                                 22,
@@ -372,7 +372,7 @@ class TestSSVMs(cloudstackTestCase):
 
         # Check status of cloud service
         if self.apiclient.hypervisor.lower() == 'vmware':
-            # SSH into SSVMs is done via management server for VMWARE
+            # SSH into SSVMs is done via management server for XenServer
             result = get_process_status(
                                 self.apiclient.connection.mgtSvr,
                                 22,
@@ -453,7 +453,7 @@ class TestSSVMs(cloudstackTestCase):
         self.debug("Checking cloud process status")
 
         if self.apiclient.hypervisor.lower() == 'vmware':
-            # SSH into SSVMs is done via management server for VMWARE
+            # SSH into SSVMs is done via management server for XenServer
             result = get_process_status(
                                 self.apiclient.connection.mgtSvr,
                                 22,

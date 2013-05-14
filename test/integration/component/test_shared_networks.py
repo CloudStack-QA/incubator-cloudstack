@@ -48,7 +48,7 @@ class Services:
                                     "username": "admin-XABU1",
                                     # Random characters are appended for unique
                                     # username
-                                    "password": "fr3sca",
+                                    "password": "password",
                                     },
                          "service_offering": {
                                     "name": "Tiny Instance",
